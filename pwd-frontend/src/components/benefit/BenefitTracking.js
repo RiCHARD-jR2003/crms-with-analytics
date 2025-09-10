@@ -1,0 +1,1511 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Chip,
+  IconButton,
+  Tooltip,
+  Grid,
+  Card,
+  CardContent,
+  CircularProgress,
+  Alert,
+  InputAdornment,
+  Tabs,
+  Tab,
+  Divider,
+  Container
+} from '@mui/material';
+import {
+  Print as PrintIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Refresh as RefreshIcon,
+  Cake as CakeIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  QrCodeScanner as QrCodeScannerIcon,
+  Menu as MenuIcon
+} from '@mui/icons-material';
+import pwdMemberService from '../../services/pwdMemberService';
+import AdminSidebar from '../shared/AdminSidebar';
+import SimpleQRScanner from '../qr/SimpleQRScanner';
+
+const BenefitTracking = () => {
+  const [pwdMembers, setPwdMembers] = useState([]);
+  const [filteredMembers, setFilteredMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [birthdayBenefits, setBirthdayBenefits] = useState([]);
+  const [selectedBenefit, setSelectedBenefit] = useState(null);
+  const [eligibleBeneficiaries, setEligibleBeneficiaries] = useState([]);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    search: '',
+    ageRange: '',
+    birthYear: '',
+    birthMonth: '',
+    disability: ''
+  });
+
+  // Fetch PWD members from API
+  const fetchPwdMembers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await pwdMemberService.getAll();
+      const members = response.data?.members || response.members || [];
+      setPwdMembers(members);
+      setFilteredMembers(members);
+    } catch (err) {
+      console.error('Error fetching PWD members:', err);
+      setError('Failed to fetch PWD members. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load birthday cash gift benefits from localStorage (from Ayuda page)
+  const loadBirthdayBenefits = () => {
+    try {
+      const savedBenefits = localStorage.getItem('benefits');
+      console.log('Raw saved benefits from localStorage:', savedBenefits);
+      
+      if (savedBenefits && savedBenefits !== 'null' && savedBenefits !== 'undefined') {
+        const benefits = JSON.parse(savedBenefits);
+        console.log('Parsed benefits:', benefits);
+        
+        if (Array.isArray(benefits)) {
+          const birthdayBenefits = benefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+          console.log('Filtered birthday benefits:', birthdayBenefits);
+          setBirthdayBenefits(birthdayBenefits);
+        } else {
+          console.log('Benefits is not an array:', benefits);
+          setBirthdayBenefits([]);
+        }
+      } else {
+        console.log('No saved benefits found or invalid data');
+        setBirthdayBenefits([]);
+      }
+    } catch (error) {
+      console.error('Error loading birthday benefits:', error);
+      setBirthdayBenefits([]);
+    }
+  };
+
+  // Get eligible beneficiaries for a specific birthday benefit
+  const getEligibleBeneficiaries = (benefit) => {
+    if (!benefit || !benefit.birthdayMonth) return [];
+    
+    const quarterMonths = {
+      'Q1': [1, 2, 3], // January, February, March
+      'Q2': [4, 5, 6], // April, May, June
+      'Q3': [7, 8, 9], // July, August, September
+      'Q4': [10, 11, 12] // October, November, December
+    };
+    
+    const eligibleMonths = quarterMonths[benefit.birthdayMonth] || [];
+    
+    return pwdMembers.filter(member => {
+      if (!member.birthDate) return false;
+      const birthMonth = new Date(member.birthDate).getMonth() + 1;
+      return eligibleMonths.includes(birthMonth);
+    }).map(member => ({
+      ...member,
+      claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
+      claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
+    }));
+  };
+
+  // Handle benefit selection
+  const handleBenefitSelect = (benefit) => {
+    setSelectedBenefit(benefit);
+    const beneficiaries = getEligibleBeneficiaries(benefit);
+    setEligibleBeneficiaries(beneficiaries);
+  };
+
+  // Get month name from month number
+  const getMonthName = (monthNumber) => {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[monthNumber - 1] || 'Unknown';
+  };
+
+  // Get quarter name from quarter code
+  const getQuarterName = (quarter) => {
+    const quarterNames = {
+      'Q1': 'Q1 - January, February, March',
+      'Q2': 'Q2 - April, May, June',
+      'Q3': 'Q3 - July, August, September',
+      'Q4': 'Q4 - October, November, December'
+    };
+    return quarterNames[quarter] || quarter;
+  };
+
+
+  // Handle sidebar toggle
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  // Handle QR scanner open/close
+  const handleOpenQRScanner = () => {
+    setQrScannerOpen(true);
+  };
+
+  const handleCloseQRScanner = () => {
+    setQrScannerOpen(false);
+  };
+
+  const handleQRScan = (result) => {
+    console.log('QR Scan result:', result);
+    
+    if (result && result.member && result.benefit) {
+      // Update eligible beneficiaries list if we have a selected benefit
+      if (selectedBenefit && selectedBenefit.id === result.benefit.id) {
+        const updatedBeneficiaries = eligibleBeneficiaries.map(beneficiary => {
+          if (beneficiary.id === result.member.id) {
+            return {
+              ...beneficiary,
+              claimStatus: result.status === 'claimed' ? 'claimed' : 'unclaimed',
+              claimDate: result.status === 'claimed' ? new Date().toISOString() : null
+            };
+          }
+          return beneficiary;
+        });
+        setEligibleBeneficiaries(updatedBeneficiaries);
+      }
+      
+      // Reload birthday benefits to update counts
+      loadBirthdayBenefits();
+      
+      // Show success message
+      alert(`Benefit "${result.benefit.name}" ${result.status} for ${result.member.firstName} ${result.member.lastName}!`);
+    }
+  };
+
+  useEffect(() => {
+    fetchPwdMembers();
+    loadBirthdayBenefits();
+  }, []);
+
+  // Reload birthday benefits when PWD members change
+  useEffect(() => {
+    loadBirthdayBenefits();
+  }, [pwdMembers]);
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = [...pwdMembers];
+
+    // Search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      filtered = filtered.filter(member => 
+        member.firstName?.toLowerCase().includes(searchTerm) ||
+        member.lastName?.toLowerCase().includes(searchTerm) ||
+        member.middleName?.toLowerCase().includes(searchTerm) ||
+        member.userID?.toString().includes(searchTerm)
+      );
+    }
+
+    // Age range filter
+    if (filters.ageRange) {
+      const currentYear = new Date().getFullYear();
+      const [minAge, maxAge] = filters.ageRange.split('-').map(Number);
+      filtered = filtered.filter(member => {
+        if (!member.birthDate) return false;
+        const birthYear = new Date(member.birthDate).getFullYear();
+        const age = currentYear - birthYear;
+        return age >= minAge && age <= maxAge;
+      });
+    }
+
+    // Birth year filter
+    if (filters.birthYear) {
+      filtered = filtered.filter(member => {
+        if (!member.birthDate) return false;
+        const birthYear = new Date(member.birthDate).getFullYear();
+        return birthYear.toString() === filters.birthYear;
+      });
+    }
+
+    // Birth month filter
+    if (filters.birthMonth) {
+      filtered = filtered.filter(member => {
+        if (!member.birthDate) return false;
+        const birthMonth = new Date(member.birthDate).getMonth() + 1;
+        return birthMonth.toString() === filters.birthMonth;
+      });
+    }
+
+    // Disability filter
+    if (filters.disability) {
+      filtered = filtered.filter(member => 
+        member.disabilityType?.toLowerCase().includes(filters.disability.toLowerCase())
+      );
+    }
+
+    setFilteredMembers(filtered);
+  }, [pwdMembers, filters]);
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      ageRange: '',
+      birthYear: '',
+      birthMonth: '',
+      disability: ''
+    });
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    const printContent = document.getElementById('benefit-tracking-table');
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>PWD Members Master List</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .filters { margin-bottom: 20px; font-size: 12px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>CABUYAO PDAO RMS</h1>
+            <h2>PWD Members Master List</h2>
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+          </div>
+          <div class="filters">
+            <strong>Applied Filters:</strong>
+            ${filters.search ? `Search: ${filters.search} | ` : ''}
+            ${filters.ageRange ? `Age Range: ${filters.ageRange} | ` : ''}
+            ${filters.birthYear ? `Birth Year: ${filters.birthYear} | ` : ''}
+            ${filters.birthMonth ? `Birth Month: ${filters.birthMonth} | ` : ''}
+            ${filters.disability ? `Disability: ${filters.disability} | ` : ''}
+            Total Records: ${filteredMembers.length}
+          </div>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const getAge = (birthDate) => {
+    if (!birthDate) return 'N/A';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getBirthMonth = (birthDate) => {
+    if (!birthDate) return 'N/A';
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[new Date(birthDate).getMonth()];
+  };
+
+  const getBirthYear = (birthDate) => {
+    if (!birthDate) return 'N/A';
+    return new Date(birthDate).getFullYear();
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return 'success';
+      case 'pending':
+        return 'warning';
+      case 'rejected':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ 
+        p: 4, 
+        minHeight: '100vh',
+        bgcolor: '#f8f9fa',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <Box sx={{ 
+          textAlign: 'center',
+          p: 4,
+          bgcolor: 'white',
+          borderRadius: 3,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+        }}>
+          <CircularProgress size={60} sx={{ color: '#2C3E50', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary">
+            Loading PWD members...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ 
+        p: 4, 
+        minHeight: '100vh',
+        bgcolor: '#f8f9fa',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+      }}>
+        <Alert 
+          severity="error" 
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={fetchPwdMembers}
+              sx={{ fontWeight: 'bold' }}
+            >
+              Retry
+            </Button>
+          }
+          sx={{
+            borderRadius: 3,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            '& .MuiAlert-message': {
+              fontSize: '1.1rem'
+            }
+          }}
+        >
+          {error}
+        </Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F4F7FC' }}>
+      {/* Admin Sidebar with Toggle */}
+      <AdminSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
+      
+      {/* Main Content */}
+      <Box sx={{ 
+        flexGrow: 1,
+        p: { xs: 1, sm: 2, md: 3 },
+        ml: { xs: 0, md: '280px' }, // Hide sidebar margin on mobile
+        width: { xs: '100%', md: 'calc(100% - 280px)' },
+        minHeight: '100vh',
+        bgcolor: '#f8f9fa',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        transition: 'margin-left 0.3s ease-in-out'
+      }}>
+        <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 1 } }}>
+          {/* Mobile Menu Button */}
+          <Box sx={{ 
+            display: { xs: 'flex', md: 'none' },
+            alignItems: 'center',
+            mb: 2,
+            p: 1
+          }}>
+            <Button
+              variant="outlined"
+              startIcon={<MenuIcon />}
+              onClick={handleSidebarToggle}
+              sx={{
+                color: '#566573',
+                borderColor: '#D5DBDB',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderRadius: 2,
+                '&:hover': {
+                  borderColor: '#253D90',
+                  background: '#F4F7FC',
+                  color: '#253D90'
+                }
+              }}
+            >
+              Menu
+            </Button>
+          </Box>
+          {/* Header */}
+          <Box sx={{ 
+            mb: { xs: 2, md: 4 },
+            textAlign: 'center',
+            p: { xs: 2, md: 3 },
+            bgcolor: 'white',
+            borderRadius: 3,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid #e0e0e0'
+          }}>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              gutterBottom 
+              sx={{ 
+                fontWeight: 'bold', 
+                color: '#2C3E50',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 2,
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+              }}
+            >
+              Benefit Tracking
+            </Typography>
+            <Typography 
+              variant="h6" 
+              color="text.secondary" 
+              sx={{ 
+                fontWeight: 400,
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
+            >
+              Master list of PWD members with filtering and printing capabilities
+            </Typography>
+          </Box>
+
+          {/* Tabs */}
+          <Paper sx={{ 
+            mb: { xs: 2, md: 3 }, 
+            borderRadius: 3,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid #e0e0e0'
+          }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTab-root': {
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  minWidth: { xs: 'auto', sm: 'auto' }
+                },
+                '& .Mui-selected': {
+                  color: '#2C3E50'
+                }
+              }}
+            >
+              <Tab 
+                label="PWD Members Master List" 
+                sx={{ 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
+                  px: { xs: 1, sm: 2 }
+                }}
+              />
+              <Tab 
+                label={`Birthday Cash Gifts (${birthdayBenefits.length})`} 
+                icon={<CakeIcon />}
+                iconPosition="start"
+                sx={{ 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
+                  px: { xs: 1, sm: 2 }
+                }}
+              />
+            </Tabs>
+          </Paper>
+
+        {/* Tab Content */}
+        {activeTab === 0 ? (
+          <>
+            {/* Summary Cards */}
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Total PWD Members
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {pwdMembers.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(240, 147, 251, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Filtered Results
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {filteredMembers.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(79, 172, 254, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Approved Members
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {pwdMembers.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(250, 112, 154, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Pending Approval
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      0
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Filters */}
+            <Paper sx={{ 
+              p: { xs: 2, md: 3 }, 
+              mb: { xs: 2, md: 3 }, 
+              borderRadius: 3,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+              border: '1px solid #e0e0e0'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, md: 3 } }}>
+                <Box sx={{ 
+                  p: 1, 
+                  borderRadius: 2, 
+                  bgcolor: '#f5f5f5', 
+                  mr: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FilterIcon sx={{ color: '#2C3E50' }} />
+                </Box>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    color: '#2C3E50',
+                    fontSize: { xs: '1rem', md: '1.25rem' }
+                  }}
+                >
+                  Filters
+                </Typography>
+              </Box>
+              
+              <Grid container spacing={{ xs: 1, sm: 2 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    fullWidth
+                    label="Search"
+                    placeholder="Search by name or PWD ID"
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange('search', e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: '#666' }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        '&:hover fieldset': {
+                          borderColor: '#2C3E50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2C3E50',
+                        },
+                      },
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={6} sm={6} md={2}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ color: '#666' }}>Age Range</InputLabel>
+                    <Select
+                      value={filters.ageRange}
+                      label="Age Range"
+                      onChange={(e) => handleFilterChange('ageRange', e.target.value)}
+                      sx={{
+                        borderRadius: 2,
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
+                      }}
+                    >
+                      <MenuItem value="">All Ages</MenuItem>
+                      <MenuItem value="0-17">0-17 years</MenuItem>
+                      <MenuItem value="18-30">18-30 years</MenuItem>
+                      <MenuItem value="31-50">31-50 years</MenuItem>
+                      <MenuItem value="51-65">51-65 years</MenuItem>
+                      <MenuItem value="66-100">66+ years</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={6} sm={6} md={2}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ color: '#666' }}>Birth Year</InputLabel>
+                    <Select
+                      value={filters.birthYear}
+                      label="Birth Year"
+                      onChange={(e) => handleFilterChange('birthYear', e.target.value)}
+                      sx={{
+                        borderRadius: 2,
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
+                      }}
+                    >
+                      <MenuItem value="">All Years</MenuItem>
+                      {Array.from({ length: 50 }, (_, i) => {
+                        const year = new Date().getFullYear() - i;
+                        return (
+                          <MenuItem key={year} value={year.toString()}>
+                            {year}
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={6} sm={6} md={2}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ color: '#666' }}>Birth Month</InputLabel>
+                    <Select
+                      value={filters.birthMonth}
+                      label="Birth Month"
+                      onChange={(e) => handleFilterChange('birthMonth', e.target.value)}
+                      sx={{
+                        borderRadius: 2,
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
+                      }}
+                    >
+                      <MenuItem value="">All Months</MenuItem>
+                      {[
+                        'January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'
+                      ].map((month, index) => (
+                        <MenuItem key={month} value={(index + 1).toString()}>
+                          {month}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={6} sm={6} md={2}>
+                  <TextField
+                    fullWidth
+                    label="Disability Type"
+                    placeholder="e.g., Visual, Hearing"
+                    value={filters.disability}
+                    onChange={(e) => handleFilterChange('disability', e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        '&:hover fieldset': {
+                          borderColor: '#2C3E50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2C3E50',
+                        },
+                      },
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={6} sm={6} md={1}>
+                  <Box sx={{ display: 'flex', gap: 1, height: '100%', alignItems: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      onClick={clearFilters}
+                      size="small"
+                      sx={{ 
+                        minWidth: 'auto',
+                        borderRadius: 2,
+                        borderColor: '#2C3E50',
+                        color: '#2C3E50',
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        '&:hover': {
+                          borderColor: '#1B2631',
+                          backgroundColor: '#f5f5f5'
+                        }
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Actions */}
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'stretch', sm: 'center' }, 
+              mb: { xs: 2, md: 3 },
+              p: { xs: 1, md: 2 },
+              bgcolor: '#f8f9fa',
+              borderRadius: 2,
+              border: '1px solid #e9ecef',
+              gap: { xs: 2, sm: 0 }
+            }}>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#2C3E50',
+                  fontSize: { xs: '1rem', md: '1.25rem' },
+                  textAlign: { xs: 'center', sm: 'left' }
+                }}
+              >
+                PWD Members Master List ({filteredMembers.length} records)
+              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: { xs: 1, sm: 2 },
+                justifyContent: { xs: 'center', sm: 'flex-end' }
+              }}>
+                <Tooltip title="Refresh Data">
+                  <IconButton 
+                    onClick={fetchPwdMembers} 
+                    sx={{ 
+                      bgcolor: 'white',
+                      border: '1px solid #dee2e6',
+                      '&:hover': { 
+                        bgcolor: '#f8f9fa',
+                        borderColor: '#2C3E50'
+                      }
+                    }}
+                  >
+                    <RefreshIcon sx={{ color: '#2C3E50' }} />
+                  </IconButton>
+                </Tooltip>
+                <Button
+                  variant="contained"
+                  startIcon={<PrintIcon />}
+                  onClick={handlePrint}
+                  sx={{ 
+                    bgcolor: '#2C3E50', 
+                    borderRadius: 2,
+                    px: { xs: 2, md: 3 },
+                    py: 1,
+                    fontWeight: 'bold',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    '&:hover': { 
+                      bgcolor: '#1B2631',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(44, 62, 80, 0.3)'
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  Print List
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Table */}
+            <TableContainer 
+              component={Paper} 
+              id="benefit-tracking-table"
+              sx={{ 
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: '1px solid #e0e0e0',
+                overflow: 'auto',
+                maxHeight: { xs: '70vh', md: 'none' }
+              }}
+            >
+              <Table sx={{ minWidth: 650 }} aria-label="PWD members table">
+                <TableHead>
+                  <TableRow sx={{ 
+                    bgcolor: '#f8f9fa',
+                    '& .MuiTableCell-head': {
+                      fontWeight: 'bold',
+                      color: '#2C3E50',
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '0.95rem' },
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }
+                  }}>
+                    <TableCell>PWD ID</TableCell>
+                    <TableCell>Full Name</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Age</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Birth Date</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Disability Type</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>Registration Date</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredMembers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                            No PWD members found
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Try adjusting your filters or refresh the data
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredMembers.map((member, index) => (
+                      <TableRow 
+                        key={member.id} 
+                        hover
+                        sx={{ 
+                          '&:nth-of-type(odd)': {
+                            bgcolor: '#f8f9fa',
+                          },
+                          '&:hover': {
+                            bgcolor: '#e3f2fd',
+                          },
+                          '& .MuiTableCell-root': {
+                            borderBottom: '1px solid #e9ecef',
+                            py: { xs: 1, md: 2 },
+                            fontSize: { xs: '0.75rem', sm: '0.875rem', md: '0.875rem' }
+                          }
+                        }}
+                      >
+                        <TableCell sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
+                          {member.pwd_id || (member.userID ? `PWD-${member.userID}` : (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              Not assigned
+                            </Typography>
+                          ))}
+                        </TableCell>
+                        <TableCell>
+                          {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              Name not provided
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                            {getAge(member.birthDate)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                          {member.birthDate ? (
+                            <Typography variant="body2">
+                              {new Date(member.birthDate).toLocaleDateString()}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              Not provided
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                          {member.disabilityType || (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              Not specified
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label="Active"
+                            color="success"
+                            size="small"
+                            sx={{ 
+                              fontWeight: 'bold',
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              '&.MuiChip-colorSuccess': {
+                                bgcolor: '#d4edda',
+                                color: '#155724'
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            Not available
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+            </Table>
+          </TableContainer>
+          </>
+        ) : (
+          /* Birthday Cash Gifts Tab */
+          <>
+            {/* Birthday Benefits Summary */}
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #E67E22 0%, #F39C12 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(230, 126, 34, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Birthday Benefits
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {birthdayBenefits.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #27AE60 0%, #2ECC71 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(39, 174, 96, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Total Eligible
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {eligibleBeneficiaries.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #3498DB 0%, #5DADE2 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(52, 152, 219, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Claimed
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {eligibleBeneficiaries.filter(b => b.claimStatus === 'claimed').length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #E74C3C 0%, #EC7063 100%)',
+                  color: 'white',
+                  boxShadow: '0 8px 32px rgba(231, 76, 60, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Unclaimed
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {eligibleBeneficiaries.filter(b => b.claimStatus === 'unclaimed').length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Birthday Benefits Selection */}
+            {birthdayBenefits.length === 0 ? (
+              <Paper sx={{ 
+                p: { xs: 4, md: 6 }, 
+                textAlign: 'center',
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: '1px solid #e0e0e0'
+              }}>
+                <CakeIcon sx={{ fontSize: 60, color: '#BDC3C7', mb: 2 }} />
+                <Typography variant="h6" sx={{ color: '#7F8C8D', mb: 1, fontWeight: 600 }}>
+                  No Birthday Cash Gift Benefits Available
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#95A5A6', mb: 3 }}>
+                  Add birthday cash gift benefits in the Ayuda page to track beneficiaries here
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={loadBirthdayBenefits}
+                  sx={{
+                    borderColor: '#E67E22',
+                    color: '#E67E22',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1,
+                    borderRadius: 2,
+                    '&:hover': {
+                      borderColor: '#D35400',
+                      backgroundColor: '#E67E2215',
+                      color: '#D35400'
+                    }
+                  }}
+                >
+                  Refresh Benefits
+                </Button>
+                <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', mt: 2 }}>
+                  Debug: Check browser console for localStorage data
+                </Typography>
+                <Box sx={{ mt: 2, p: 2, bgcolor: '#F8F9FA', borderRadius: 2, textAlign: 'left' }}>
+                  <Typography variant="caption" sx={{ color: '#7F8C8D', fontWeight: 600, display: 'block', mb: 1 }}>
+                    Debug Information:
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', fontSize: '0.7rem' }}>
+                    Total benefits in localStorage: {localStorage.getItem('benefits') ? JSON.parse(localStorage.getItem('benefits')).length : 0}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', fontSize: '0.7rem' }}>
+                    Birthday benefits found: {birthdayBenefits.length}
+                  </Typography>
+                  {localStorage.getItem('benefits') && (
+                    <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', fontSize: '0.7rem', mt: 1 }}>
+                      Raw data: {localStorage.getItem('benefits').substring(0, 100)}...
+                    </Typography>
+                  )}
+                </Box>
+              </Paper>
+            ) : (
+              <>
+                {/* QR Scanner Button */}
+                <Paper sx={{ 
+                  p: 3, 
+                  mb: 3, 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  border: '1px solid #e0e0e0',
+                  bgcolor: '#F8F9FA'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 1 }}>
+                        QR Code Claim Scanner
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                        Scan PWD member QR codes to update claim status for birthday benefits
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', mt: 0.5 }}>
+                        📱 Works on mobile devices with camera access
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      startIcon={<QrCodeScannerIcon />}
+                      onClick={handleOpenQRScanner}
+                      sx={{
+                        bgcolor: '#E67E22',
+                        '&:hover': { bgcolor: '#D35400' },
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 2,
+                        fontWeight: 600,
+                        textTransform: 'none'
+                      }}
+                    >
+                      Open QR Scanner
+                    </Button>
+                  </Box>
+                </Paper>
+                <Paper sx={{ 
+                  p: 3, 
+                  mb: 3, 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 2 }}>
+                    Select Birthday Cash Gift Benefit
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {birthdayBenefits.map((benefit) => (
+                      <Grid item xs={12} sm={6} md={4} key={benefit.id}>
+                        <Card 
+                          sx={{ 
+                            cursor: 'pointer',
+                            border: selectedBenefit?.id === benefit.id ? '2px solid #E67E22' : '1px solid #E0E0E0',
+                            borderRadius: 2,
+                            '&:hover': { 
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.3s ease'
+                            }
+                          }}
+                          onClick={() => handleBenefitSelect(benefit)}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <CakeIcon sx={{ color: '#E67E22', mr: 1 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                                {benefit.name}
+                              </Typography>
+                            </Box>
+                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#E67E22', mb: 1 }}>
+                              {benefit.amount}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#7F8C8D', mb: 1 }}>
+                              {benefit.description}
+                            </Typography>
+                            <Chip 
+                              label={getQuarterName(benefit.birthdayMonth)} 
+                              size="small" 
+                              sx={{ 
+                                bgcolor: '#E67E2215', 
+                                color: '#E67E22',
+                                fontWeight: 600,
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Paper>
+
+                {/* Beneficiaries List */}
+                {selectedBenefit && (
+                  <Paper sx={{ 
+                    borderRadius: 3,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                    border: '1px solid #e0e0e0',
+                    overflow: 'hidden'
+                  }}>
+                    <Box sx={{ 
+                      p: 3, 
+                      bgcolor: '#E67E22', 
+                      color: 'white' 
+                    }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        Eligible Beneficiaries for {selectedBenefit.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        {getQuarterName(selectedBenefit.birthdayMonth)} • {eligibleBeneficiaries.length} eligible members
+                      </Typography>
+                    </Box>
+                    
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow sx={{ 
+                            bgcolor: '#f8f9fa',
+                            '& .MuiTableCell-head': {
+                              fontWeight: 'bold',
+                              color: '#2C3E50',
+                              fontSize: '0.95rem',
+                              borderBottom: '2px solid #dee2e6'
+                            }
+                          }}>
+                            <TableCell>PWD ID</TableCell>
+                            <TableCell>Full Name</TableCell>
+                            <TableCell>Birth Month</TableCell>
+                            <TableCell>Age</TableCell>
+                            <TableCell>Disability Type</TableCell>
+                            <TableCell>Claim Status</TableCell>
+                            <TableCell>Claim Date</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {eligibleBeneficiaries.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                                <Box sx={{ textAlign: 'center' }}>
+                                  <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                                    No eligible beneficiaries found
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    No PWD members have birthdays in {getQuarterName(selectedBenefit.birthdayMonth)}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            eligibleBeneficiaries.map((member, index) => (
+                              <TableRow 
+                                key={member.id} 
+                                hover
+                                sx={{ 
+                                  '&:nth-of-type(odd)': {
+                                    bgcolor: '#f8f9fa',
+                                  },
+                                  '&:hover': {
+                                    bgcolor: '#e3f2fd',
+                                  },
+                                  '& .MuiTableCell-root': {
+                                    borderBottom: '1px solid #e9ecef',
+                                    py: 2
+                                  }
+                                }}
+                              >
+                                <TableCell sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
+                                  {member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned')}
+                                </TableCell>
+                                <TableCell>
+                                  {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided'}
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                    {getMonthName(new Date(member.birthDate).getMonth() + 1)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                    {getAge(member.birthDate)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  {member.disabilityType || 'Not specified'}
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    icon={member.claimStatus === 'claimed' ? <CheckCircleIcon /> : <CancelIcon />}
+                                    label={member.claimStatus === 'claimed' ? 'Claimed' : 'Unclaimed'}
+                                    color={member.claimStatus === 'claimed' ? 'success' : 'error'}
+                                    size="small"
+                                    sx={{ 
+                                      fontWeight: 'bold',
+                                      '&.MuiChip-colorSuccess': {
+                                        bgcolor: '#d4edda',
+                                        color: '#155724'
+                                      },
+                                      '&.MuiChip-colorError': {
+                                        bgcolor: '#f8d7da',
+                                        color: '#721c24'
+                                      }
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  {member.claimDate ? (
+                                    <Typography variant="body2">
+                                      {new Date(member.claimDate).toLocaleDateString()}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                      Not claimed
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Paper>
+                )}
+              </>
+            )}
+          </>
+          )}
+        </Container>
+      </Box>
+      
+      {/* QR Scanner Dialog */}
+      <SimpleQRScanner
+        open={qrScannerOpen}
+        onClose={handleCloseQRScanner}
+        onScan={handleQRScan}
+      />
+    </Box>
+  );
+};
+
+export default BenefitTracking;

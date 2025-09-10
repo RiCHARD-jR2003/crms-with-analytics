@@ -1,0 +1,315 @@
+// src/components/announcement/PWDMemberAnnouncement.js
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Card,
+  CardContent,
+  Button,
+  Alert,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
+  Chip,
+  Avatar
+} from '@mui/material';
+import {
+  Campaign,
+  Schedule,
+  Person,
+  PriorityHigh,
+  CheckCircle,
+  Warning,
+  Info
+} from '@mui/icons-material';
+import PWDMemberSidebar from '../shared/PWDMemberSidebar';
+import { useAuth } from '../../contexts/AuthContext';
+import announcementService from '../../services/announcementService';
+
+function PWDMemberAnnouncement() {
+  const { currentUser } = useAuth();
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get user's barangay from currentUser
+        const userBarangay = currentUser?.barangay || currentUser?.pwd_member?.barangay;
+        console.log('Current User:', currentUser);
+        console.log('User Barangay:', userBarangay);
+        
+        // Use announcementService to get filtered announcements
+        const filteredAnnouncements = await announcementService.getFilteredForPWDMember(userBarangay);
+        setAnnouncements(filteredAnnouncements);
+        
+      } catch (error) {
+        console.error('Error fetching announcements:', error);
+        setError('Failed to load announcements. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchAnnouncements();
+    }
+  }, [currentUser]);
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'urgent': return '#E74C3C';
+      case 'high': return '#E67E22';
+      case 'medium': return '#F39C12';
+      case 'low': return '#27AE60';
+      default: return '#3498DB';
+    }
+  };
+
+  const getPriorityIcon = (priority) => {
+    switch (priority) {
+      case 'urgent': return <PriorityHigh />;
+      case 'high': return <Warning />;
+      case 'medium': return <Info />;
+      case 'low': return <CheckCircle />;
+      default: return <Info />;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F8F9FA' }}>
+        <PWDMemberSidebar />
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          ml: '280px',
+          width: 'calc(100% - 280px)'
+        }}>
+          <CircularProgress />
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#1A1A1A' }}>
+      <PWDMemberSidebar />
+      
+      {/* Main content */}
+      <Box sx={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        ml: '280px',
+        width: 'calc(100% - 280px)',
+        p: 3
+      }}>
+        {/* Header */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#FFFFFF', mb: 1 }}>
+            Announcements
+          </Typography>
+          <Typography variant="h6" sx={{ color: '#E0E0E0' }}>
+            Stay updated with the latest news and important information from PDAO.
+          </Typography>
+        </Box>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Statistics Card */}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#2C3E50', border: '1px solid #455A64' }}>
+              <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                <Campaign sx={{ fontSize: 40, color: '#3498DB', mb: 1 }} />
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#FFFFFF' }}>
+                  {announcements.length}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#E0E0E0' }}>
+                  Total Announcements
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#2C3E50', border: '1px solid #455A64' }}>
+              <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                <PriorityHigh sx={{ fontSize: 40, color: '#E74C3C', mb: 1 }} />
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#FFFFFF' }}>
+                  {announcements.filter(a => a.priority === 'urgent').length}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#E0E0E0' }}>
+                  Urgent Announcements
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#2C3E50', border: '1px solid #455A64' }}>
+              <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                <Schedule sx={{ fontSize: 40, color: '#F39C12', mb: 1 }} />
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#FFFFFF' }}>
+                  {announcements.filter(a => {
+                    const announcementDate = new Date(a.created_at);
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return announcementDate > weekAgo;
+                  }).length}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#E0E0E0' }}>
+                  This Week
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#2C3E50', border: '1px solid #455A64' }}>
+              <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                <CheckCircle sx={{ fontSize: 40, color: '#27AE60', mb: 1 }} />
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#FFFFFF' }}>
+                  {announcements.filter(a => a.status === 'published').length}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#E0E0E0' }}>
+                  Published
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Announcements List */}
+        <Paper elevation={0} sx={{
+          p: 3,
+          border: '1px solid #E0E0E0',
+          borderRadius: 4,
+          bgcolor: '#2C3E50', // Dark blue background
+          height: '100%'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <Campaign sx={{ color: '#FFFFFF', fontSize: 24 }} />
+            <Typography sx={{ fontWeight: 700, color: '#FFFFFF', fontSize: '1.2rem' }}>
+              Latest Announcements
+            </Typography>
+          </Box>
+          
+          {announcements.length > 0 ? (
+            <List>
+              {announcements.map((announcement, index) => (
+                <React.Fragment key={announcement.id}>
+                  <ListItem sx={{ px: 0, py: 2 }}>
+                    <ListItemIcon sx={{ minWidth: 48 }}>
+                      <Avatar sx={{ 
+                        bgcolor: `${getPriorityColor(announcement.priority)}15`,
+                        color: getPriorityColor(announcement.priority),
+                        width: 40,
+                        height: 40
+                      }}>
+                        {getPriorityIcon(announcement.priority)}
+                      </Avatar>
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: '#FFFFFF' }}>
+                            {announcement.title}
+                          </Typography>
+                          <Chip
+                            label={announcement.priority?.toUpperCase() || 'MEDIUM'}
+                            size="small"
+                            sx={{
+                              backgroundColor: getPriorityColor(announcement.priority) === 'success' ? '#27AE60' : 
+                                             getPriorityColor(announcement.priority) === 'warning' ? '#F39C12' : '#E74C3C',
+                              color: '#FFFFFF',
+                              fontWeight: 600,
+                              fontSize: '0.7rem'
+                            }}
+                          />
+                          {/* Show barangay-specific badge */}
+                          {announcement.targetAudience !== 'All' && 
+                           announcement.targetAudience !== 'PWD Members' && 
+                           announcement.targetAudience !== 'PWDMember' && (
+                            <Chip
+                              label={`${announcement.targetAudience} Barangay`}
+                              size="small"
+                              sx={{
+                                backgroundColor: '#3498DB',
+                                color: 'white',
+                                fontWeight: 600,
+                                fontSize: '0.7rem'
+                              }}
+                            />
+                          )}
+                        </Box>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography variant="body2" sx={{ color: '#E0E0E0', mb: 1 }}>
+                            {announcement.content || announcement.description}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Person sx={{ fontSize: 16, color: '#B0BEC5' }} />
+                              <Typography variant="caption" sx={{ color: '#B0BEC5' }}>
+                                {announcement.author?.username || announcement.author?.name || 'PDAO Admin'}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Schedule sx={{ fontSize: 16, color: '#B0BEC5' }} />
+                              <Typography variant="caption" sx={{ color: '#B0BEC5' }}>
+                                {formatDate(announcement.created_at)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                  {index < announcements.length - 1 && <Divider sx={{ borderColor: '#455A64' }} />}
+                </React.Fragment>
+              ))}
+            </List>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <Campaign sx={{ fontSize: 64, color: '#FFFFFF', mb: 2 }} />
+              <Typography variant="h6" sx={{ color: '#FFFFFF', mb: 1 }}>
+                No announcements available
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#E0E0E0' }}>
+                Check back later for important updates and news from PDAO.
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      </Box>
+    </Box>
+  );
+}
+
+export default PWDMemberAnnouncement;

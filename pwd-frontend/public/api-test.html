@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2C3E50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #E0E0E0;
+            border-radius: 8px;
+            background-color: #F8F9FA;
+        }
+        .success {
+            border-color: #27AE60;
+            background-color: #D5F4E6;
+        }
+        .error {
+            border-color: #E74C3C;
+            background-color: #FADBD8;
+        }
+        button {
+            background-color: #3498DB;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #2980B9;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .success-result {
+            background-color: #D5F4E6;
+            border: 1px solid #27AE60;
+        }
+        .error-result {
+            background-color: #FADBD8;
+            border: 1px solid #E74C3C;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 API Connection Test</h1>
+        
+        <div class="test-section">
+            <h3>📡 Backend Server Test</h3>
+            <p>Testing connection to: <strong>http://192.168.18.10:8000/api</strong></p>
+            <button onclick="testBackendConnection()">Test Backend Connection</button>
+            <div id="backendResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Login Test</h3>
+            <p>Testing login functionality</p>
+            <button onclick="testLogin()">Test Login</button>
+            <div id="loginResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Announcements Test</h3>
+            <p>Testing public announcements endpoint</p>
+            <button onclick="testAnnouncements()">Test Announcements</button>
+            <div id="announcementsResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>👥 PWD Members Test</h3>
+            <p>Testing PWD members endpoint (requires auth)</p>
+            <button onclick="testPWDMembers()">Test PWD Members</button>
+            <div id="pwdMembersResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://192.168.18.10:8000/api';
+
+        async function testBackendConnection() {
+            const resultDiv = document.getElementById('backendResult');
+            resultDiv.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/announcements`);
+                const data = await response.json();
+                
+                resultDiv.className = 'result success-result';
+                resultDiv.textContent = `✅ SUCCESS!\nStatus: ${response.status}\nData: ${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.className = 'result error-result';
+                resultDiv.textContent = `❌ ERROR!\n${error.message}`;
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.textContent = 'Testing login...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'banlic_pwd',
+                        password: 'password'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success-result';
+                    resultDiv.textContent = `✅ LOGIN SUCCESS!\nStatus: ${response.status}\nToken: ${data.token ? 'Received' : 'Not received'}`;
+                } else {
+                    resultDiv.className = 'result error-result';
+                    resultDiv.textContent = `❌ LOGIN FAILED!\nStatus: ${response.status}\nError: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error-result';
+                resultDiv.textContent = `❌ LOGIN ERROR!\n${error.message}`;
+            }
+        }
+
+        async function testAnnouncements() {
+            const resultDiv = document.getElementById('announcementsResult');
+            resultDiv.textContent = 'Testing announcements...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/announcements`);
+                const data = await response.json();
+                
+                resultDiv.className = 'result success-result';
+                resultDiv.textContent = `✅ ANNOUNCEMENTS SUCCESS!\nStatus: ${response.status}\nCount: ${data.length} announcements\nFirst: ${data[0]?.title || 'N/A'}`;
+            } catch (error) {
+                resultDiv.className = 'result error-result';
+                resultDiv.textContent = `❌ ANNOUNCEMENTS ERROR!\n${error.message}`;
+            }
+        }
+
+        async function testPWDMembers() {
+            const resultDiv = document.getElementById('pwdMembersResult');
+            resultDiv.textContent = 'Testing PWD members...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/pwd-members`);
+                
+                if (response.status === 401) {
+                    resultDiv.className = 'result error-result';
+                    resultDiv.textContent = `❌ AUTHENTICATION REQUIRED!\nStatus: ${response.status}\nThis is expected - you need to login first`;
+                } else {
+                    const data = await response.json();
+                    resultDiv.className = 'result success-result';
+                    resultDiv.textContent = `✅ PWD MEMBERS SUCCESS!\nStatus: ${response.status}\nCount: ${data.length || 'Unknown'} members`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error-result';
+                resultDiv.textContent = `❌ PWD MEMBERS ERROR!\n${error.message}`;
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            console.log('API Test Page Loaded');
+            console.log('Testing API Base URL:', API_BASE_URL);
+            testBackendConnection();
+        };
+    </script>
+</body>
+</html>
+
