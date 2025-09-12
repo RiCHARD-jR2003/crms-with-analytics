@@ -6,7 +6,7 @@ const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Local development server
 async function getStoredToken() {
   try {
     const raw = localStorage.getItem('auth.token');
-    return raw ? JSON.parse(raw) : null;X``
+    return raw ? JSON.parse(raw) : null;
   } catch (_) {
     localStorage.removeItem('auth.token');
     return null;

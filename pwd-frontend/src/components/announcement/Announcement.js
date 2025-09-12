@@ -68,17 +68,44 @@ const Announcement = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Statistics state
+  const [stats, setStats] = useState({
+    activeAnnouncements: 0,
+    totalViews: 0,
+    highPriority: 0,
+    eventAnnouncements: 0
+  });
 
   // Fetch announcements on component mount
   useEffect(() => {
     fetchAnnouncements();
   }, []);
 
+  const calculateStats = (announcementsData) => {
+    const activeAnnouncements = announcementsData.filter(ann => ann.status === 'Active').length;
+    const totalViews = announcementsData.reduce((sum, ann) => sum + (ann.views || 0), 0);
+    const highPriority = announcementsData.filter(ann => ann.priority === 'High').length;
+    const eventAnnouncements = announcementsData.filter(ann => ann.type === 'Event').length;
+    
+    return {
+      activeAnnouncements,
+      totalViews,
+      highPriority,
+      eventAnnouncements
+    };
+  };
+
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
       const data = await announcementService.getAll();
       setAnnouncements(data);
+      
+      // Calculate statistics from real data
+      const calculatedStats = calculateStats(data);
+      setStats(calculatedStats);
+      
       setError(null);
     } catch (err) {
       setError('Failed to fetch announcements');
@@ -197,7 +224,7 @@ const Announcement = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F4F7FC' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'white' }}>
       <AdminSidebar />
       
       {/* --- Main Content --- */}
@@ -212,7 +239,6 @@ const Announcement = () => {
         <Box sx={{
           bgcolor: '#FFFFFF',
           p: 2,
-          borderBottom: '1px solid #E0E0E0',
           display: 'flex',
           alignItems: 'center',
           gap: 2,
@@ -220,41 +246,11 @@ const Announcement = () => {
           top: 0,
           zIndex: 10
         }}>
-          <Button
-            variant="contained"
-            sx={{
-              bgcolor: '#193a52',
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 4, py: 1,
-              borderRadius: 2,
-              boxShadow: 'none',
-              '&:hover': { bgcolor: '#153a5a' }
-            }}
-          >
-            Announcements
-          </Button>
           <Box sx={{ flexGrow: 1 }} />
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-            sx={{ 
-              bgcolor: '#3498DB', 
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 3,
-              py: 1,
-              borderRadius: 2,
-              '&:hover': { bgcolor: '#2980B9' } 
-            }}
-          >
-            Create Announcement
-          </Button>
         </Box>
 
         {/* Content Area */}
-        <Box sx={{ flex: 1, p: 3, bgcolor: '#F4F7FC' }}>
+        <Box sx={{ flex: 1, p: 3, bgcolor: 'white' }}>
           {/* Success Alert */}
           {success && (
             <Alert severity="success" sx={{ mb: 3 }}>
@@ -269,25 +265,43 @@ const Announcement = () => {
             </Alert>
           )}
           
+          {/* Announcements Management Section */}
           <Paper elevation={0} sx={{
             p: 3,
             border: '1px solid #E0E0E0',
             borderRadius: 4,
-            bgcolor: '#2C3E50',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column'
+            bgcolor: 'white',
+            mb: 3
           }}>
-            <Typography sx={{ fontWeight: 700, mb: 3, color: '#FFFFFF', fontSize: '1.2rem' }}>
-              ANNOUNCEMENTS MANAGEMENT
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography sx={{ fontWeight: 700, color: '#2C3E50', fontSize: '1.2rem' }}>
+                ANNOUNCEMENTS MANAGEMENT
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => handleOpenDialog()}
+                sx={{ 
+                  bgcolor: '#3498DB', 
+                  color: 'white',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  '&:hover': { bgcolor: '#2980B9' } 
+                }}
+              >
+                Create Announcement
+              </Button>
+            </Box>
 
             {/* Summary Cards */}
-            <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper elevation={0} sx={{ 
-                  border: '1px solid #455A64', 
-                  bgcolor: '#34495E',
+                  border: '1px solid #E0E0E0', 
+                  bgcolor: 'white',
                   borderRadius: 2,
                   p: 3,
                   textAlign: 'center',
@@ -298,18 +312,18 @@ const Announcement = () => {
                   }
                 }}>
                   <Notifications sx={{ fontSize: 40, color: '#3498DB', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#FFFFFF', mb: 1 }}>
-                    6
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                    {stats.activeAnnouncements}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#E0E0E0', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
                     Active Announcements
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper elevation={0} sx={{ 
-                  border: '1px solid #455A64', 
-                  bgcolor: '#34495E',
+                  border: '1px solid #E0E0E0', 
+                  bgcolor: 'white',
                   borderRadius: 2,
                   p: 3,
                   textAlign: 'center',
@@ -320,18 +334,18 @@ const Announcement = () => {
                   }
                 }}>
                   <Public sx={{ fontSize: 40, color: '#27AE60', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#FFFFFF', mb: 1 }}>
-                    5,330
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                    {stats.totalViews.toLocaleString()}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#E0E0E0', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
                     Total Views
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper elevation={0} sx={{ 
-                  border: '1px solid #455A64', 
-                  bgcolor: '#34495E',
+                  border: '1px solid #E0E0E0', 
+                  bgcolor: 'white',
                   borderRadius: 2,
                   p: 3,
                   textAlign: 'center',
@@ -342,18 +356,18 @@ const Announcement = () => {
                   }
                 }}>
                   <PriorityHigh sx={{ fontSize: 40, color: '#E74C3C', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#FFFFFF', mb: 1 }}>
-                    2
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                    {stats.highPriority}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#E0E0E0', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
                     High Priority
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper elevation={0} sx={{ 
-                  border: '1px solid #455A64', 
-                  bgcolor: '#34495E',
+                  border: '1px solid #E0E0E0', 
+                  bgcolor: 'white',
                   borderRadius: 2,
                   p: 3,
                   textAlign: 'center',
@@ -364,20 +378,28 @@ const Announcement = () => {
                   }
                 }}>
                   <Campaign sx={{ fontSize: 40, color: '#9B59B6', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#FFFFFF', mb: 1 }}>
-                    3
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                    {stats.eventAnnouncements}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#E0E0E0', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
                     Event Announcements
                   </Typography>
                 </Paper>
               </Grid>
             </Grid>
+          </Paper>
 
+          {/* Current Announcements Section */}
+          <Paper elevation={0} sx={{
+            p: 3,
+            border: '1px solid #E0E0E0',
+            borderRadius: 4,
+            bgcolor: 'white'
+          }}>
             {/* Loading and Error States */}
             {loading && (
               <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography sx={{ color: '#E0E0E0' }}>Loading announcements...</Typography>
+                <Typography sx={{ color: '#2C3E50' }}>Loading announcements...</Typography>
               </Box>
             )}
 
@@ -390,7 +412,7 @@ const Announcement = () => {
             {/* Announcements Grid */}
             {!loading && !error && (
               <>
-                <Typography sx={{ fontWeight: 600, mb: 2, color: '#FFFFFF', fontSize: '1.2rem' }}>
+                <Typography sx={{ fontWeight: 600, mb: 2, color: '#2C3E50', fontSize: '1.2rem' }}>
                   CURRENT ANNOUNCEMENTS
                 </Typography>
                 <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -406,7 +428,7 @@ const Announcement = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           p: 2,
-                          bgcolor: '#2C3E50',
+                          bgcolor: 'white',
                           overflow: 'hidden', // Prevent content overflow
                           '&:hover': { 
                             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -422,7 +444,7 @@ const Announcement = () => {
                               size="small" 
                               sx={{ 
                                 bgcolor: '#3498DB', 
-                                color: '#FFFFFF',
+                                color: '#2C3E50',
                                 fontWeight: 600,
                                 fontSize: '0.6rem',
                                 height: '20px'
@@ -434,7 +456,7 @@ const Announcement = () => {
                               sx={{ 
                                 bgcolor: getPriorityColor(announcement.priority) === 'success' ? '#27AE60' : 
                                        getPriorityColor(announcement.priority) === 'warning' ? '#F39C12' : '#E74C3C', 
-                                color: '#FFFFFF',
+                                color: '#2C3E50',
                                 fontWeight: 600,
                                 fontSize: '0.6rem',
                                 height: '20px'
@@ -469,7 +491,7 @@ const Announcement = () => {
                           sx={{ 
                             fontWeight: 700, 
                             mb: 1, 
-                            color: '#FFFFFF', 
+                            color: '#2C3E50', 
                             fontSize: '1rem',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -481,7 +503,7 @@ const Announcement = () => {
                         </Typography>
                         <Typography 
                           sx={{ 
-                            color: '#E0E0E0', 
+                            color: '#2C3E50', 
                             mb: 1, 
                             lineHeight: 1.4, 
                             fontSize: '0.8rem',
@@ -517,7 +539,15 @@ const Announcement = () => {
                 </Grid>
               </>
             )}
+          </Paper>
 
+          {/* Quick Actions Section */}
+          <Paper elevation={0} sx={{
+            p: 3,
+            border: '1px solid #E0E0E0',
+            borderRadius: 4,
+            bgcolor: 'white'
+          }}>
             {/* Quick Actions */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button 
@@ -572,8 +602,9 @@ const Announcement = () => {
                 Archive Old
               </Button>
             </Box>
+          </Paper>
 
-            {/* Add/Edit Announcement Dialog */}
+          {/* Add/Edit Announcement Dialog */}
             <Dialog 
               open={openDialog} 
               onClose={handleCloseDialog} 
@@ -685,7 +716,7 @@ const Announcement = () => {
                             borderColor: '#3498DB',
                           },
                           '& .MuiSelect-icon': {
-                            color: '#B0BEC5',
+                            color: '#2C3E50',
                           },
                         }}
                         MenuProps={{
@@ -693,7 +724,7 @@ const Announcement = () => {
                             sx: {
                               bgcolor: '#34495E',
                               '& .MuiMenuItem-root': {
-                                color: '#FFFFFF',
+                                color: '#2C3E50',
                                 '&:hover': {
                                   bgcolor: '#5D6D7E',
                                 },
@@ -732,7 +763,7 @@ const Announcement = () => {
                             borderColor: '#3498DB',
                           },
                           '& .MuiSelect-icon': {
-                            color: '#B0BEC5',
+                            color: '#2C3E50',
                           },
                         }}
                         MenuProps={{
@@ -740,7 +771,7 @@ const Announcement = () => {
                             sx: {
                               bgcolor: '#34495E',
                               '& .MuiMenuItem-root': {
-                                color: '#FFFFFF',
+                                color: '#2C3E50',
                                 '&:hover': {
                                   bgcolor: '#5D6D7E',
                                 },
@@ -767,7 +798,7 @@ const Announcement = () => {
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             bgcolor: '#34495E',
-                            color: '#FFFFFF',
+                            color: '#2C3E50',
                             '& fieldset': {
                               borderColor: '#5D6D7E',
                             },
@@ -779,7 +810,7 @@ const Announcement = () => {
                             },
                           },
                           '& .MuiSelect-select': {
-                            color: '#FFFFFF',
+                            color: '#2C3E50',
                           },
                         }}
                         MenuProps={{
@@ -787,7 +818,7 @@ const Announcement = () => {
                             sx: {
                               bgcolor: '#34495E',
                               '& .MuiMenuItem-root': {
-                                color: '#FFFFFF',
+                                color: '#2C3E50',
                                 '&:hover': {
                                   bgcolor: '#3498DB',
                                 },
@@ -884,7 +915,7 @@ const Announcement = () => {
                             borderColor: '#3498DB',
                           },
                           '& .MuiSelect-icon': {
-                            color: '#B0BEC5',
+                            color: '#2C3E50',
                           },
                         }}
                         MenuProps={{
@@ -892,7 +923,7 @@ const Announcement = () => {
                             sx: {
                               bgcolor: '#34495E',
                               '& .MuiMenuItem-root': {
-                                color: '#FFFFFF',
+                                color: '#2C3E50',
                                 '&:hover': {
                                   bgcolor: '#5D6D7E',
                                 },
@@ -1269,7 +1300,6 @@ const Announcement = () => {
                 </Button>
               </DialogActions>
             </Dialog>
-          </Paper>
         </Box>
       </Box>
     </Box>

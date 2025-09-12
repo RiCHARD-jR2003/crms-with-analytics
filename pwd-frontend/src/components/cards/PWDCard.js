@@ -21,6 +21,13 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  TextField,
+  InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Collapse,
 } from '@mui/material';
 import {
   CreditCard as CreditCardIcon,
@@ -30,6 +37,8 @@ import {
   Refresh as RefreshIcon,
   Person as PersonIcon,
   Edit as EditIcon,
+  FilterList as FilterListIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminSidebar from '../shared/AdminSidebar';
@@ -42,6 +51,14 @@ function PWDCard() {
   const [qrCodeDataURL, setQrCodeDataURL] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    barangay: '',
+    disability: '',
+    ageRange: '',
+    status: ''
+  });
 
   // Fetch PWD members from API
   const fetchPwdMembers = async () => {
@@ -291,6 +308,80 @@ function PWDCard() {
     window.print();
   };
 
+  // Filter options
+  const barangays = [
+    'Bigaa', 'Butong', 'Marinig', 'Gulod', 'Pob. Uno', 'Pob. Dos', 'Pob. Tres',
+    'Sala', 'Niugan', 'Banaybanay', 'Pulo', 'Diezmo', 'Pittland', 'San Isidro',
+    'Mamatid', 'Baclaran', 'Casile', 'Banlic'
+  ];
+
+  const disabilityTypes = [
+    'Visual Impairment', 'Hearing Impairment', 'Physical Disability',
+    'Intellectual Disability', 'Learning Disability', 'Mental Health',
+    'Speech Impairment', 'Multiple Disabilities', 'Other'
+  ];
+
+  const ageRanges = [
+    'Under 18', '18-25', '26-35', '36-45', '46-55', '56-65', 'Over 65'
+  ];
+
+  const statuses = [
+    'Active', 'Inactive', 'Pending', 'Suspended'
+  ];
+
+  // Filter functions
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      barangay: '',
+      disability: '',
+      ageRange: '',
+      status: ''
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some(value => value !== '');
+
+  // Filter the members based on current filters
+  const filteredMembers = pwdMembers.filter(member => {
+    // Search filter
+    const matchesSearch = !filters.search || 
+      (member.name && member.name.toLowerCase().includes(filters.search.toLowerCase())) ||
+      (member.id && member.id.toLowerCase().includes(filters.search.toLowerCase()));
+
+    // Barangay filter
+    const matchesBarangay = !filters.barangay || 
+      (member.barangay && member.barangay === filters.barangay);
+
+    // Disability filter
+    const matchesDisability = !filters.disability || 
+      (member.disabilityType && member.disabilityType === filters.disability);
+
+    // Status filter
+    const matchesStatus = !filters.status || 
+      (member.status && member.status === filters.status);
+
+    // Age range filter
+    let matchesAgeRange = true;
+    if (filters.ageRange && member.age !== 'N/A') {
+      const age = parseInt(member.age);
+      if (filters.ageRange === 'Under 18') {
+        matchesAgeRange = age < 18;
+      } else if (filters.ageRange === 'Over 65') {
+        matchesAgeRange = age > 65;
+      } else {
+        const [min, max] = filters.ageRange.split('-').map(Number);
+        matchesAgeRange = age >= min && age <= max;
+      }
+    }
+
+    return matchesSearch && matchesBarangay && matchesDisability && matchesAgeRange && matchesStatus;
+  });
+
   const selectedMemberData = pwdMembers.find(member => member.id === selectedMember) || pwdMembers[0];
 
   // Show loading state
@@ -300,7 +391,7 @@ function PWDCard() {
         <AdminSidebar />
         <Box sx={{ flexGrow: 1, p: 3, ml: '280px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <Box sx={{ textAlign: 'center' }}>
-            <CircularProgress size={60} sx={{ color: '#2C3E50', mb: 2 }} />
+            <CircularProgress size={60} sx={{ color: '#0b87ac', mb: 2 }} />
             <Typography variant="h6" color="text.secondary">
               Loading PWD members...
             </Typography>
@@ -355,8 +446,8 @@ function PWDCard() {
               variant="contained"
               onClick={fetchPwdMembers}
               sx={{ 
-                bgcolor: '#2C3E50', 
-                '&:hover': { bgcolor: '#1B2631' },
+                bgcolor: '#0b87ac', 
+                '&:hover': { bgcolor: '#0a6b8a' },
                 textTransform: 'none',
                 fontWeight: 'bold'
               }}
@@ -386,7 +477,7 @@ function PWDCard() {
         <Container maxWidth="xl">
           {/* Page Header */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 1 }}>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#0b87ac', mb: 1 }}>
               PWD Card
             </Typography>
             <Typography variant="body1" sx={{ color: '#7F8C8D' }}>
@@ -397,11 +488,12 @@ function PWDCard() {
           <Grid container spacing={3}>
             {/* Left Panel - PWD Masterlist */}
             <Grid item xs={12} md={8}>
-              <Card elevation={3}>
-                <CardContent sx={{ p: 0 }}>
+              <Card elevation={3} sx={{ height: '700px', display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+                <CardContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'white' }}>
+
                   {/* Header with tabs and controls */}
                   <Box sx={{ 
-                    backgroundColor: '#253D90', 
+                    backgroundColor: '#0b87ac', 
                     color: 'white', 
                     p: 2, 
                     borderRadius: '8px 8px 0 0',
@@ -410,12 +502,63 @@ function PWDCard() {
                     justifyContent: 'space-between'
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                        Masterlist
+                      <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                        PWD MASTERLIST
                       </Typography>
+                      <Box sx={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        px: 2, 
+                        py: 0.5, 
+                        borderRadius: 1 
+                      }}>
+                        <Typography variant="body2">
+                          PWD Members Master List ({filteredMembers.length} records)
+                        </Typography>
+                      </Box>
                     </Box>
                     
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <TextField
+                        size="small"
+                        placeholder="Search members..."
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                        sx={{ 
+                          width: 200,
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            borderRadius: 2,
+                            '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                            '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                            '&.Mui-focused fieldset': { borderColor: 'white' },
+                          },
+                          '& .MuiInputBase-input': {
+                            color: 'white',
+                            fontSize: '0.9rem',
+                            '&::placeholder': {
+                              color: 'rgba(255,255,255,0.7)',
+                              opacity: 1
+                            }
+                          }
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                            </InputAdornment>
+                          )
+                        }}
+                      />
+                      <IconButton 
+                        sx={{ 
+                          color: 'white',
+                          backgroundColor: showFilters ? 'rgba(255,255,255,0.2)' : 'transparent',
+                          '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' }
+                        }} 
+                        onClick={() => setShowFilters(!showFilters)}
+                      >
+                        <FilterListIcon />
+                      </IconButton>
                       <IconButton sx={{ color: 'white' }} onClick={fetchPwdMembers}>
                         <RefreshIcon />
                       </IconButton>
@@ -434,43 +577,236 @@ function PWDCard() {
                     </Box>
                   </Box>
 
-                  {/* Table Title */}
-                  <Box sx={{ 
-                    backgroundColor: '#253D90', 
-                    color: 'white', 
-                    p: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                      PWD MASTERLIST
-                    </Typography>
+
+                  {/* Filter Section */}
+                  <Collapse in={showFilters}>
                     <Box sx={{ 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      px: 2, 
-                      py: 0.5, 
-                      borderRadius: 1 
+                      p: 3, 
+                      backgroundColor: '#F8FAFC', 
+                      borderBottom: '1px solid #E0E0E0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2
                     }}>
-                      <Typography variant="body2">
-                        PWD Members Master List ({pwdMembers.length} records)
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#0b87ac' }}>
+                          Search Filters
+                        </Typography>
+                        {hasActiveFilters && (
+                          <Button
+                            startIcon={<ClearIcon />}
+                            onClick={clearFilters}
+                            size="small"
+                            sx={{ 
+                              textTransform: 'none', 
+                              color: '#E74C3C',
+                              '&:hover': {
+                                backgroundColor: '#FDF2F2',
+                                color: '#C0392B'
+                              }
+                            }}
+                          >
+                            Clear All
+                          </Button>
+                        )}
+                      </Box>
+                      
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={3}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Barangay</InputLabel>
+                            <Select
+                              value={filters.barangay}
+                              onChange={(e) => handleFilterChange('barangay', e.target.value)}
+                              label="Barangay"
+                              sx={{
+                                backgroundColor: '#FFFFFF',
+                                '& .MuiSelect-select': {
+                                  color: '#0b87ac',
+                                  fontWeight: 600,
+                                  fontSize: '0.9rem'
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#E0E0E0'
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                }
+                              }}
+                            >
+                              <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Barangays</MenuItem>
+                              {barangays.map(barangay => (
+                                <MenuItem key={barangay} value={barangay} sx={{ color: '#0b87ac', fontWeight: 600 }}>
+                                  {barangay}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Disability Type</InputLabel>
+                            <Select
+                              value={filters.disability}
+                              onChange={(e) => handleFilterChange('disability', e.target.value)}
+                              label="Disability Type"
+                              sx={{
+                                backgroundColor: '#FFFFFF',
+                                '& .MuiSelect-select': {
+                                  color: '#0b87ac',
+                                  fontWeight: 600,
+                                  fontSize: '0.9rem'
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#E0E0E0'
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                }
+                              }}
+                            >
+                              <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Disabilities</MenuItem>
+                              {disabilityTypes.map(disability => (
+                                <MenuItem key={disability} value={disability} sx={{ color: '#0b87ac', fontWeight: 600 }}>
+                                  {disability}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Age Range</InputLabel>
+                            <Select
+                              value={filters.ageRange}
+                              onChange={(e) => handleFilterChange('ageRange', e.target.value)}
+                              label="Age Range"
+                              sx={{
+                                backgroundColor: '#FFFFFF',
+                                '& .MuiSelect-select': {
+                                  color: '#0b87ac',
+                                  fontWeight: 600,
+                                  fontSize: '0.9rem'
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#E0E0E0'
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                }
+                              }}
+                            >
+                              <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Ages</MenuItem>
+                              {ageRanges.map(range => (
+                                <MenuItem key={range} value={range} sx={{ color: '#0b87ac', fontWeight: 600 }}>
+                                  {range}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6} md={3}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Status</InputLabel>
+                            <Select
+                              value={filters.status}
+                              onChange={(e) => handleFilterChange('status', e.target.value)}
+                              label="Status"
+                              sx={{
+                                backgroundColor: '#FFFFFF',
+                                '& .MuiSelect-select': {
+                                  color: '#0b87ac',
+                                  fontWeight: 600,
+                                  fontSize: '0.9rem'
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#E0E0E0'
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                  borderColor: '#0b87ac'
+                                }
+                              }}
+                            >
+                              <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Statuses</MenuItem>
+                              {statuses.map(status => (
+                                <MenuItem key={status} value={status} sx={{ color: '#0b87ac', fontWeight: 600 }}>
+                                  {status}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                      </Grid>
+
+                      {/* Active Filters Display */}
+                      {hasActiveFilters && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="body2" sx={{ color: '#0b87ac', mb: 1, fontWeight: 600 }}>
+                            Active Filters:
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {Object.entries(filters).map(([key, value]) => {
+                              if (value && key !== 'search') {
+                                return (
+                                  <Chip
+                                    key={key}
+                                    label={`${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`}
+                                    onDelete={() => handleFilterChange(key, '')}
+                                    size="small"
+                                    sx={{ 
+                                      backgroundColor: '#0b87ac', 
+                                      color: '#FFFFFF',
+                                      fontWeight: 600,
+                                      '& .MuiChip-deleteIcon': {
+                                        color: '#FFFFFF',
+                                        '&:hover': {
+                                          color: '#E8F4FD'
+                                        }
+                                      }
+                                    }}
+                                  />
+                                );
+                              }
+                              return null;
+                            })}
+                          </Box>
+                        </Box>
+                      )}
                     </Box>
-                  </Box>
+                  </Collapse>
 
                   {/* Data Table */}
                   <TableContainer 
                     component={Paper} 
                     elevation={0} 
                     sx={{ 
-                      border: '1px solid #E0E0E0',
-                      height: '400px',
-                      overflow: 'auto'
+                      border: 'none',
+                      borderRadius: '0px',
+                      flex: 1,
+                      overflow: 'auto',
+                      boxShadow: 'none',
+                      minHeight: 0,
+                      backgroundColor: 'white'
                     }}
                   >
                     <Table stickyHeader>
                       <TableHead>
-                        <TableRow sx={{ backgroundColor: '#253D90' }}>
+                        <TableRow sx={{ backgroundColor: '#0b87ac' }}>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>PWD ID NO.</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>NAME</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>AGE</TableCell>
@@ -479,32 +815,65 @@ function PWDCard() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {pwdMembers.map((member, index) => (
+                        {filteredMembers.map((member, index) => (
                           <TableRow 
                             key={member.id}
                             sx={{ 
-                              backgroundColor: selectedMember === member.id ? '#E3F2FD' : (index % 2 === 0 ? 'white' : '#F8F9FA'),
+                              backgroundColor: selectedMember === member.id ? '#E8F4FD' : (index % 2 === 0 ? 'white' : '#F8FAFC'),
                               cursor: 'pointer',
-                              borderLeft: selectedMember === member.id ? '4px solid #3498DB' : 'none'
+                              borderLeft: selectedMember === member.id ? '4px solid #0b87ac' : 'none',
+                              borderBottom: '1px solid #E0E0E0',
+                              '&:hover': {
+                                backgroundColor: selectedMember === member.id ? '#E8F4FD' : '#F0F8FF',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 2px 4px rgba(11, 135, 172, 0.1)'
+                              },
+                              transition: 'all 0.2s ease-in-out'
                             }}
                             onClick={() => setSelectedMember(member.id)}
                           >
-                            <TableCell sx={{ fontSize: '13px' }}>
+                            <TableCell sx={{ 
+                              fontSize: '13px', 
+                              py: 2
+                            }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Radio
                                   checked={selectedMember === member.id}
                                   onChange={() => setSelectedMember(member.id)}
-                                  sx={{ color: '#3498DB' }}
+                                  sx={{ 
+                                    color: '#0b87ac',
+                                    '&.Mui-checked': {
+                                      color: '#0b87ac'
+                                    }
+                                  }}
                                 />
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                <Typography variant="body2" sx={{ 
+                                  fontWeight: 'bold',
+                                  color: selectedMember === member.id ? '#0b87ac' : '#2C3E50'
+                                }}>
                                 {member.id}
                                 </Typography>
                               </Box>
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', fontSize: '13px' }}>{member.name}</TableCell>
-                            <TableCell sx={{ fontSize: '13px' }}>{member.age}</TableCell>
-                            <TableCell sx={{ fontSize: '13px' }}>{member.barangay}</TableCell>
-                            <TableCell>
+                            <TableCell sx={{ 
+                              fontWeight: 'bold', 
+                              fontSize: '13px',
+                              py: 2,
+                              color: selectedMember === member.id ? '#0b87ac' : '#2C3E50'
+                            }}>{member.name}</TableCell>
+                            <TableCell sx={{ 
+                              fontSize: '13px',
+                              py: 2,
+                              color: selectedMember === member.id ? '#0b87ac' : '#2C3E50'
+                            }}>{member.age}</TableCell>
+                            <TableCell sx={{ 
+                              fontSize: '13px',
+                              py: 2,
+                              color: selectedMember === member.id ? '#0b87ac' : '#2C3E50'
+                            }}>{member.barangay}</TableCell>
+                            <TableCell sx={{ 
+                              py: 2
+                            }}>
                               <Chip 
                                 label={member.status} 
                                 color="success"
@@ -512,7 +881,12 @@ function PWDCard() {
                                 sx={{ 
                                   fontWeight: 'bold',
                                   fontSize: '11px',
-                                  height: '24px'
+                                  height: '24px',
+                                  backgroundColor: '#27AE60',
+                                  color: 'white',
+                                  '&:hover': {
+                                    backgroundColor: '#229954'
+                                  }
                                 }}
                               />
                             </TableCell>
@@ -760,7 +1134,7 @@ function PWDCard() {
                         <Avatar sx={{ 
                           width: 40, 
                           height: 40, 
-                          backgroundColor: '#3498DB',
+                          backgroundColor: '#0b87ac',
                           border: '2px solid white',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                         }}>
@@ -795,16 +1169,16 @@ function PWDCard() {
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                           <Typography variant="body2" sx={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 'bold' }}>
-                            {selectedMemberData.lastName || 'Dela Cruz'},
+                            {selectedMemberData.lastName || ''},
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 'bold' }}>
-                            {selectedMemberData.firstName || 'Juan'},
+                            {selectedMemberData.firstName || ''},
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 'bold' }}>
-                            {selectedMemberData.middleName || 'Alimagno'},
+                            {selectedMemberData.middleName || ''},
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#FFFFFF', fontSize: '14px', fontWeight: 'bold' }}>
-                            {selectedMemberData.suffix || 'Jr.'}
+                            {selectedMemberData.suffix || ''}
                           </Typography>
                         </Box>
                       </Box>

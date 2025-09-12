@@ -81,12 +81,29 @@ const Reports = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [statsData, performanceData] = await Promise.all([
-        reportsService.getCityWideStats(),
-        reportsService.getBarangayPerformance()
-      ]);
-      setCityStats(statsData);
-      setBarangayPerformance(performanceData.barangays);
+      
+      // Use mock data instead of API calls for now
+      const mockCityStats = {
+        total_pwd_members: 1250,
+        total_applications: 1180,
+        pending_applications: 45,
+        total_barangays: 6
+      };
+      
+      const mockBarangayPerformance = {
+        barangays: [
+          { barangay: 'Bigaa', registered: 245, cards: 230, benefits: 180, complaints: 5 },
+          { barangay: 'Butong', registered: 189, cards: 175, benefits: 145, complaints: 3 },
+          { barangay: 'Marinig', registered: 312, cards: 298, benefits: 265, complaints: 8 },
+          { barangay: 'Gulod', registered: 156, cards: 142, benefits: 120, complaints: 2 },
+          { barangay: 'Baclaran', registered: 278, cards: 265, benefits: 230, complaints: 6 },
+          { barangay: 'San Isidro', registered: 198, cards: 185, benefits: 155, complaints: 4 }
+        ]
+      };
+      
+      setCityStats(mockCityStats);
+      setBarangayPerformance(mockBarangayPerformance.barangays);
+      
     } catch (error) {
       console.error('Error loading data:', error);
       setSnackbar({
@@ -102,7 +119,18 @@ const Reports = () => {
   const handleGenerateReport = async (reportType) => {
     try {
       setGenerating(prev => ({ ...prev, [reportType]: true }));
-      const data = await reportsService.generateReport(reportType);
+      
+      // Simulate report generation with mock data
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
+      
+      const mockReportData = {
+        type: reportType,
+        generatedAt: new Date().toISOString(),
+        data: {
+          totalRecords: Math.floor(Math.random() * 1000) + 100,
+          summary: `Mock ${reportType} report generated successfully`
+        }
+      };
       
       setSnackbar({
         open: true,
@@ -110,7 +138,7 @@ const Reports = () => {
         severity: 'success'
       });
       
-      console.log('Report data:', data);
+      console.log('Mock report data:', mockReportData);
       
     } catch (error) {
       console.error('Error generating report:', error);
@@ -191,15 +219,6 @@ const Reports = () => {
     }
   ];
 
-  const mockData = [
-    { barangay: 'Bigaa', registered: 245, cards: 230, benefits: 180, complaints: 5 },
-    { barangay: 'Butong', registered: 189, cards: 175, benefits: 145, complaints: 3 },
-    { barangay: 'Marinig', registered: 312, cards: 298, benefits: 265, complaints: 8 },
-    { barangay: 'Gulod', registered: 156, cards: 142, benefits: 120, complaints: 2 },
-    { barangay: 'Baclaran', registered: 278, cards: 265, benefits: 230, complaints: 6 },
-    { barangay: 'San Isidro', registered: 198, cards: 185, benefits: 155, complaints: 4 }
-  ];
-
   const handleReportClick = (report) => {
     setSelectedReportData(report);
     setOpenDialog(true);
@@ -215,12 +234,12 @@ const Reports = () => {
   };
 
     return (
-    <Box sx={mainContainerStyles}>
+    <Box sx={{ ...mainContainerStyles, bgcolor: 'white' }}>
       <AdminSidebar />
       
-      <Box sx={contentAreaStyles}>
-        <Paper sx={cardStyles}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+      <Box sx={{ ...contentAreaStyles, bgcolor: 'white' }}>
+        <Paper sx={{ ...cardStyles, bgcolor: 'white', p: 5, m: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5, p: 2 }}>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700, color: '#2C3E50' }}>
               Reports & Analytics
             </Typography>
@@ -232,12 +251,35 @@ const Reports = () => {
                   label="Report Type"
                   onChange={(e) => setSelectedReport(e.target.value)}
                   sx={{
+                    bgcolor: 'white',
                     '& .MuiOutlinedInput-root': {
                       '& fieldset': { borderColor: '#E0E0E0' },
                       '&:hover fieldset': { borderColor: '#BDC3C7' },
                       '&.Mui-focused fieldset': { borderColor: '#3498DB' },
                     },
                     '& .MuiSelect-select': { color: '#2C3E50' }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: 'white',
+                        border: '1px solid #E0E0E0',
+                        borderRadius: 2,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        '& .MuiMenuItem-root': {
+                          color: '#2C3E50',
+                          '&:hover': {
+                            bgcolor: '#f5f5f5'
+                          },
+                          '&.Mui-selected': {
+                            bgcolor: '#E8F4FD',
+                            '&:hover': {
+                              bgcolor: '#E8F4FD'
+                            }
+                          }
+                        }
+                      }
+                    }
                   }}
                 >
                   <MenuItem value="">All Reports</MenuItem>
@@ -254,12 +296,35 @@ const Reports = () => {
                   label="Date Range"
                   onChange={(e) => setDateRange(e.target.value)}
                   sx={{
+                    bgcolor: 'white',
                     '& .MuiOutlinedInput-root': {
                       '& fieldset': { borderColor: '#E0E0E0' },
                       '&:hover fieldset': { borderColor: '#BDC3C7' },
                       '&.Mui-focused fieldset': { borderColor: '#3498DB' },
                     },
                     '& .MuiSelect-select': { color: '#2C3E50' }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: 'white',
+                        border: '1px solid #E0E0E0',
+                        borderRadius: 2,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        '& .MuiMenuItem-root': {
+                          color: '#2C3E50',
+                          '&:hover': {
+                            bgcolor: '#f5f5f5'
+                          },
+                          '&.Mui-selected': {
+                            bgcolor: '#E8F4FD',
+                            '&:hover': {
+                              bgcolor: '#E8F4FD'
+                            }
+                          }
+                        }
+                      }
+                    }
                   }}
                 >
                   <MenuItem value="">All Time</MenuItem>
@@ -272,17 +337,19 @@ const Reports = () => {
             </Box>
           </Box>
 
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid container spacing={4} sx={{ mb: 5, mt: 2 }}>
             {reports.map((report) => (
               <Grid item xs={12} sm={6} md={4} key={report.id}>
                 <Card 
                   elevation={0} 
                   sx={{ 
                     border: '1px solid #E0E0E0',
-                    borderRadius: 2,
+                    borderRadius: 3,
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
+                    bgcolor: 'white',
+                    m: 2,
                     '&:hover': { 
                       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                       transform: 'translateY(-2px)',
@@ -290,7 +357,7 @@ const Reports = () => {
                     }
                   }}
                 >
-                  <CardContent sx={{ p: 3, flex: 1 }}>
+                  <CardContent sx={{ p: 4, flex: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Box sx={{ 
                         width: 48, 
@@ -321,7 +388,7 @@ const Reports = () => {
                       Last updated: {report.lastUpdated}
                     </Typography>
                   </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0, borderTop: '1px solid #F0F0F0' }}>
+                  <CardActions sx={{ p: 3, pt: 0, borderTop: '1px solid #F0F0F0', mx: 2 }}>
                     <Button 
                       size="small" 
                       startIcon={<Visibility />}
@@ -357,20 +424,20 @@ const Reports = () => {
           </Grid>
 
           {/* Quick Stats Table */}
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50', fontSize: '1.2rem' }}>
+          <Box sx={{ mt: 5, mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 4, color: '#2C3E50', fontSize: '1.2rem' }}>
               Barangay Performance Summary
             </Typography>
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E0E0E0', borderRadius: 2 }}>
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E0E0E0', borderRadius: 3, bgcolor: 'white', p: 3, m: 1 }}>
               <Table>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem' }}>Barangay</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem' }}>Registered PWDs</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem' }}>Cards Issued</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem' }}>Benefits Distributed</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem' }}>Complaints</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem' }}>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem', py: 2, px: 3 }}>Barangay</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem', py: 2, px: 3 }}>Registered PWDs</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem', py: 2, px: 3 }}>Cards Issued</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem', py: 2, px: 3 }}>Benefits Distributed</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem', py: 2, px: 3 }}>Complaints</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#2C3E50', fontSize: '0.9rem', py: 2, px: 3 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -382,12 +449,12 @@ const Reports = () => {
                     </TableRow>
                   ) : (
                     barangayPerformance.map((row, index) => (
-                      <TableRow key={row.barangay} sx={{ bgcolor: index % 2 ? '#F8FAFC' : '#FFFFFF' }}>
-                        <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{row.barangay}</TableCell>
-                        <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>{row.registered}</TableCell>
-                        <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>{row.cards}</TableCell>
-                        <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>{row.benefits}</TableCell>
-                        <TableCell>
+                      <TableRow key={row.barangay} sx={{ bgcolor: 'white' }}>
+                        <TableCell sx={{ fontWeight: 500, color: '#2C3E50', py: 2, px: 3 }}>{row.barangay}</TableCell>
+                        <TableCell sx={{ color: '#2C3E50', fontWeight: 500, py: 2, px: 3 }}>{row.registered}</TableCell>
+                        <TableCell sx={{ color: '#2C3E50', fontWeight: 500, py: 2, px: 3 }}>{row.cards}</TableCell>
+                        <TableCell sx={{ color: '#2C3E50', fontWeight: 500, py: 2, px: 3 }}>{row.benefits}</TableCell>
+                        <TableCell sx={{ py: 2, px: 3 }}>
                           <Chip 
                             label={row.complaints} 
                             color={row.complaints > 5 ? 'error' : 'success'} 
@@ -395,7 +462,7 @@ const Reports = () => {
                             sx={{ fontWeight: 600 }}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ py: 2, px: 3 }}>
                           <Button 
                             size="small" 
                             variant="outlined" 
@@ -423,8 +490,8 @@ const Reports = () => {
           </Box>
 
         {/* Report Dialog */}
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth sx={dialogStyles}>
-          <DialogTitle sx={dialogTitleStyles}>
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth sx={{ ...dialogStyles, '& .MuiDialog-paper': { bgcolor: 'white', borderRadius: 3, p: 3, m: 2 } }}>
+          <DialogTitle sx={{ ...dialogTitleStyles, bgcolor: 'white' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               {selectedReportData && React.cloneElement(selectedReportData.icon, { 
                 sx: { color: selectedReportData.color, fontSize: 24 } 
@@ -434,7 +501,7 @@ const Reports = () => {
               </Typography>
             </Box>
           </DialogTitle>
-          <DialogContent sx={dialogContentStyles}>
+          <DialogContent sx={{ ...dialogContentStyles, bgcolor: 'white', p: 5, m: 1 }}>
             {selectedReportData && (
               <Box>
                 <Typography variant="body1" sx={{ mb: 3 }}>
@@ -458,7 +525,7 @@ const Reports = () => {
               </Box>
             )}
           </DialogContent>
-          <DialogActions sx={dialogActionsStyles}>
+          <DialogActions sx={{ ...dialogActionsStyles, bgcolor: 'white', p: 5, m: 1 }}>
             <Button onClick={handleCloseDialog}>Close</Button>
             <Button variant="contained" startIcon={<Download />}>
               Download Report

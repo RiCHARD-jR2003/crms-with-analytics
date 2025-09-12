@@ -63,13 +63,13 @@ function AdminSidebar({ isOpen, onToggle }) {
           py: 1.5, 
           borderRadius: 2, 
           mb: 1,
-          bgcolor: active ? '#253D90' : 'transparent',
+          bgcolor: active ? '#0b87ac' : 'transparent',
           color: active ? '#FFFFFF' : '#566573',
           fontWeight: active ? 600 : 500,
           '&:hover': {
-            background: active ? '#1e2f7a' : '#E8F0FE',
+            background: active ? '#0a6b8a' : '#E8F0FE',
             cursor: 'pointer',
-            color: active ? '#FFFFFF' : '#253D90'
+            color: active ? '#FFFFFF' : '#0b87ac'
           },
           transition: 'all 0.2s ease-in-out'
         }}
@@ -81,7 +81,7 @@ function AdminSidebar({ isOpen, onToggle }) {
         ) : (
           React.cloneElement(icon, { sx: { fontSize: 22, color: active ? '#FFFFFF' : '#566573' } })
         )}
-        <Typography sx={{ fontWeight: 'inherit', fontSize: '0.95rem' }}>{label}</Typography>
+        <Typography sx={{ fontWeight: 'inherit', fontSize: '0.95rem', color: active ? '#FFFFFF' : '#566573' }}>{label}</Typography>
       </Box>
     );
   };
@@ -115,7 +115,7 @@ function AdminSidebar({ isOpen, onToggle }) {
           <Box sx={{
             width: 40,
             height: 40,
-            backgroundColor: '#253D90',
+            backgroundColor: '#0b87ac',
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
@@ -143,7 +143,7 @@ function AdminSidebar({ isOpen, onToggle }) {
             color: '#566573',
             '&:hover': {
               backgroundColor: '#E8F0FE',
-              color: '#253D90'
+              color: '#0b87ac'
             }
           }}
         >
@@ -250,9 +250,9 @@ function AdminSidebar({ isOpen, onToggle }) {
             py: 1.2,
             borderRadius: 2,
             '&:hover': {
-              borderColor: '#253D90',
+              borderColor: '#0b87ac',
               background: '#F4F7FC',
-              color: '#253D90'
+              color: '#0b87ac'
             }
           }}
         >

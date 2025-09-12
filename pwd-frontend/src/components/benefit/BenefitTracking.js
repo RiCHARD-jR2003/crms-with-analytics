@@ -38,7 +38,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   QrCodeScanner as QrCodeScannerIcon,
-  Menu as MenuIcon
+  Menu as MenuIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import pwdMemberService from '../../services/pwdMemberService';
 import AdminSidebar from '../shared/AdminSidebar';
@@ -51,6 +52,7 @@ const BenefitTracking = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [birthdayBenefits, setBirthdayBenefits] = useState([]);
+  const [financialBenefits, setFinancialBenefits] = useState([]);
   const [selectedBenefit, setSelectedBenefit] = useState(null);
   const [eligibleBeneficiaries, setEligibleBeneficiaries] = useState([]);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
@@ -82,7 +84,7 @@ const BenefitTracking = () => {
     }
   };
 
-  // Load birthday cash gift benefits from localStorage (from Ayuda page)
+  // Load birthday cash gift and financial assistance benefits from localStorage (from Ayuda page)
   const loadBirthdayBenefits = () => {
     try {
       const savedBenefits = localStorage.getItem('benefits');
@@ -93,41 +95,89 @@ const BenefitTracking = () => {
         console.log('Parsed benefits:', benefits);
         
         if (Array.isArray(benefits)) {
-          const birthdayBenefits = benefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+          // Handle migration from old "Financial" type to "Financial Assistance"
+          const migratedBenefits = benefits.map(benefit => {
+            if (benefit.type === 'Financial') {
+              return { ...benefit, type: 'Financial Assistance' };
+            }
+            return benefit;
+          });
+          
+          const birthdayBenefits = migratedBenefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+          const financialBenefits = migratedBenefits.filter(benefit => benefit.type === 'Financial Assistance');
           console.log('Filtered birthday benefits:', birthdayBenefits);
+          console.log('Filtered financial benefits:', financialBenefits);
           setBirthdayBenefits(birthdayBenefits);
+          setFinancialBenefits(financialBenefits);
+          
+          // Save migrated benefits back to localStorage
+          localStorage.setItem('benefits', JSON.stringify(migratedBenefits));
         } else {
           console.log('Benefits is not an array:', benefits);
           setBirthdayBenefits([]);
+          setFinancialBenefits([]);
         }
       } else {
         console.log('No saved benefits found or invalid data');
         setBirthdayBenefits([]);
+        setFinancialBenefits([]);
       }
     } catch (error) {
-      console.error('Error loading birthday benefits:', error);
+      console.error('Error loading benefits:', error);
       setBirthdayBenefits([]);
+      setFinancialBenefits([]);
     }
   };
 
-  // Get eligible beneficiaries for a specific birthday benefit
+  // Get eligible beneficiaries for a specific benefit
   const getEligibleBeneficiaries = (benefit) => {
-    if (!benefit || !benefit.birthdayMonth) return [];
+    if (!benefit) return [];
     
-    const quarterMonths = {
-      'Q1': [1, 2, 3], // January, February, March
-      'Q2': [4, 5, 6], // April, May, June
-      'Q3': [7, 8, 9], // July, August, September
-      'Q4': [10, 11, 12] // October, November, December
-    };
+    // For Birthday Cash Gift benefits, filter by birthday month/quarter
+    if (benefit.type === 'Birthday Cash Gift' && benefit.birthdayMonth) {
+      const quarterMonths = {
+        'Q1': [1, 2, 3], // January, February, March
+        'Q2': [4, 5, 6], // April, May, June
+        'Q3': [7, 8, 9], // July, August, September
+        'Q4': [10, 11, 12] // October, November, December
+      };
+      
+      const eligibleMonths = quarterMonths[benefit.birthdayMonth] || [];
+      
+      return pwdMembers.filter(member => {
+        if (!member.birthDate) return false;
+        const birthMonth = new Date(member.birthDate).getMonth() + 1;
+        return eligibleMonths.includes(birthMonth);
+      }).map(member => ({
+        ...member,
+        claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
+        claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
+      }));
+    }
     
-    const eligibleMonths = quarterMonths[benefit.birthdayMonth] || [];
+    // For Financial Assistance benefits, filter by month if specified
+    if (benefit.type === 'Financial Assistance' && benefit.quarter) {
+      const monthMap = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12
+      };
+      
+      const targetMonth = monthMap[benefit.quarter];
+      
+      return pwdMembers.filter(member => {
+        if (!member.birthDate) return false;
+        const birthMonth = new Date(member.birthDate).getMonth() + 1;
+        return birthMonth === targetMonth;
+      }).map(member => ({
+        ...member,
+        claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
+        claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
+      }));
+    }
     
-    return pwdMembers.filter(member => {
-      if (!member.birthDate) return false;
-      const birthMonth = new Date(member.birthDate).getMonth() + 1;
-      return eligibleMonths.includes(birthMonth);
-    }).map(member => ({
+    // For other benefit types or if no specific filtering, return all members
+    return pwdMembers.map(member => ({
       ...member,
       claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
       claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
@@ -327,6 +377,88 @@ const BenefitTracking = () => {
     printWindow.print();
   };
 
+  const generatePDF = async () => {
+    try {
+      // Dynamically import jsPDF
+      const { jsPDF } = await import('jspdf');
+      const { autoTable } = await import('jspdf-autotable');
+      
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      
+      // Add header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CABUYAO PDAO RMS', 20, 20);
+      
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'normal');
+      doc.text('PWD Members Master List', 20, 30);
+      
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 40);
+      
+      // Add filters info
+      let filtersText = 'Applied Filters: ';
+      if (filters.search) filtersText += `Search: ${filters.search} | `;
+      if (filters.ageRange) filtersText += `Age Range: ${filters.ageRange} | `;
+      if (filters.birthYear) filtersText += `Birth Year: ${filters.birthYear} | `;
+      if (filters.birthMonth) filtersText += `Birth Month: ${filters.birthMonth} | `;
+      if (filters.disability) filtersText += `Disability: ${filters.disability} | `;
+      filtersText += `Total Records: ${filteredMembers.length}`;
+      
+      doc.setFontSize(8);
+      doc.text(filtersText, 20, 50);
+      
+      // Prepare table data
+      const tableData = filteredMembers.map(member => [
+        member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned'),
+        `${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided',
+        getAge(member.birthDate),
+        member.birthDate ? new Date(member.birthDate).toLocaleDateString() : 'Not provided',
+        member.disabilityType || 'Not specified',
+        'Active',
+        'Not available'
+      ]);
+      
+      // Add table
+      autoTable(doc, {
+        startY: 60,
+        head: [['PWD ID', 'Full Name', 'Age', 'Birth Date', 'Disability Type', 'Status', 'Registration Date']],
+        body: tableData,
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [44, 62, 80],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        margin: { top: 60, left: 20, right: 20 },
+        tableWidth: 'auto',
+        showHead: 'everyPage',
+        didDrawPage: (data) => {
+          // Add page numbers
+          const pageCount = doc.getNumberOfPages();
+          const currentPage = data.pageNumber;
+          doc.setFontSize(8);
+          doc.text(`Page ${currentPage} of ${pageCount}`, 20, doc.internal.pageSize.height - 10);
+        }
+      });
+      
+      // Save the PDF
+      const fileName = `PWD_Members_Master_List_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please make sure jsPDF is installed.');
+    }
+  };
+
   const getAge = (birthDate) => {
     if (!birthDate) return 'N/A';
     const today = new Date();
@@ -371,8 +503,7 @@ const BenefitTracking = () => {
       <Box sx={{ 
         p: 4, 
         minHeight: '100vh',
-        bgcolor: '#f8f9fa',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        bgcolor: 'white',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center'
@@ -398,8 +529,7 @@ const BenefitTracking = () => {
       <Box sx={{ 
         p: 4, 
         minHeight: '100vh',
-        bgcolor: '#f8f9fa',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+        bgcolor: 'white'
       }}>
         <Alert 
           severity="error" 
@@ -428,7 +558,7 @@ const BenefitTracking = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F4F7FC' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'white' }}>
       {/* Admin Sidebar with Toggle */}
       <AdminSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
       
@@ -439,8 +569,7 @@ const BenefitTracking = () => {
         ml: { xs: 0, md: '280px' }, // Hide sidebar margin on mobile
         width: { xs: '100%', md: 'calc(100% - 280px)' },
         minHeight: '100vh',
-        bgcolor: '#f8f9fa',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        bgcolor: 'white',
         transition: 'margin-left 0.3s ease-in-out'
       }}>
         <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 1 } }}>
@@ -515,7 +644,8 @@ const BenefitTracking = () => {
             mb: { xs: 2, md: 3 }, 
             borderRadius: 3,
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            border: '1px solid #e0e0e0'
+            border: '1px solid #e0e0e0',
+            bgcolor: 'white'
           }}>
             <Tabs 
               value={activeTab} 
@@ -523,14 +653,20 @@ const BenefitTracking = () => {
               variant="scrollable"
               scrollButtons="auto"
               sx={{
+                bgcolor: 'white',
                 '& .MuiTab-root': {
                   fontWeight: 'bold',
                   textTransform: 'none',
                   fontSize: { xs: '0.875rem', sm: '1rem' },
-                  minWidth: { xs: 'auto', sm: 'auto' }
+                  minWidth: { xs: 'auto', sm: 'auto' },
+                  color: '#2C3E50'
                 },
                 '& .Mui-selected': {
-                  color: '#2C3E50'
+                  color: '#2C3E50',
+                  bgcolor: '#f5f5f5'
+                },
+                '& .MuiTabs-indicator': {
+                  bgcolor: '#2C3E50'
                 }
               }}
             >
@@ -538,7 +674,8 @@ const BenefitTracking = () => {
                 label="PWD Members Master List" 
                 sx={{ 
                   fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
-                  px: { xs: 1, sm: 2 }
+                  px: { xs: 1, sm: 2 },
+                  color: '#2C3E50'
                 }}
               />
               <Tab 
@@ -547,7 +684,18 @@ const BenefitTracking = () => {
                 iconPosition="start"
                 sx={{ 
                   fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
-                  px: { xs: 1, sm: 2 }
+                  px: { xs: 1, sm: 2 },
+                  color: '#2C3E50'
+                }}
+              />
+              <Tab 
+                label={`Financial Assistance (${financialBenefits.length})`} 
+                icon={<CakeIcon />}
+                iconPosition="start"
+                sx={{ 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
+                  px: { xs: 1, sm: 2 },
+                  color: '#2C3E50'
                 }}
               />
             </Tabs>
@@ -561,7 +709,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
                   borderRadius: 3
                 }}>
@@ -592,7 +740,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(240, 147, 251, 0.3)',
                   borderRadius: 3
                 }}>
@@ -623,7 +771,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(79, 172, 254, 0.3)',
                   borderRadius: 3
                 }}>
@@ -654,7 +802,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(250, 112, 154, 0.3)',
                   borderRadius: 3
                 }}>
@@ -690,13 +838,14 @@ const BenefitTracking = () => {
               mb: { xs: 2, md: 3 }, 
               borderRadius: 3,
               boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              border: '1px solid #e0e0e0'
+              border: '1px solid #e0e0e0',
+              bgcolor: 'white'
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, md: 3 } }}>
                 <Box sx={{ 
                   p: 1, 
                   borderRadius: 2, 
-                  bgcolor: '#f5f5f5', 
+                  bgcolor: 'white', 
                   mr: 2,
                   display: 'flex',
                   alignItems: 'center',
@@ -727,13 +876,14 @@ const BenefitTracking = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <SearchIcon sx={{ color: '#666' }} />
+                          <SearchIcon sx={{ color: '#2C3E50' }} />
                         </InputAdornment>
                       ),
                     }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2,
+                        color: '#2C3E50',
                         '&:hover fieldset': {
                           borderColor: '#2C3E50',
                         },
@@ -741,24 +891,62 @@ const BenefitTracking = () => {
                           borderColor: '#2C3E50',
                         },
                       },
+                      '& .MuiInputLabel-root': {
+                        color: '#2C3E50',
+                      },
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#666',
+                        opacity: 0.7,
+                      },
                     }}
                   />
                 </Grid>
                 
                 <Grid item xs={6} sm={6} md={2}>
                   <FormControl fullWidth>
-                    <InputLabel sx={{ color: '#666' }}>Age Range</InputLabel>
+                    <InputLabel sx={{ color: '#2C3E50' }}>Age Range</InputLabel>
                     <Select
                       value={filters.ageRange}
                       label="Age Range"
                       onChange={(e) => handleFilterChange('ageRange', e.target.value)}
                       sx={{
                         borderRadius: 2,
+                        color: '#2C3E50',
+                        bgcolor: 'white',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#2C3E50',
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#2C3E50',
+                        },
+                        '& .MuiSelect-icon': {
+                          color: '#2C3E50',
+                        },
+                        '& .MuiPaper-root': {
+                          bgcolor: 'white',
+                        },
+                        '& .MuiMenuItem-root': {
+                          color: '#2C3E50',
+                          bgcolor: 'white',
+                          '&:hover': {
+                            bgcolor: '#f5f5f5',
+                          },
+                        },
+                      }}
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            bgcolor: 'white',
+                            '& .MuiMenuItem-root': {
+                              color: '#2C3E50',
+                              '&:hover': {
+                                bgcolor: '#f5f5f5',
+                              },
+                            },
+                          },
                         },
                       }}
                     >
@@ -774,18 +962,49 @@ const BenefitTracking = () => {
                 
                 <Grid item xs={6} sm={6} md={2}>
                   <FormControl fullWidth>
-                    <InputLabel sx={{ color: '#666' }}>Birth Year</InputLabel>
+                    <InputLabel sx={{ color: '#2C3E50' }}>Birth Year</InputLabel>
                     <Select
                       value={filters.birthYear}
                       label="Birth Year"
                       onChange={(e) => handleFilterChange('birthYear', e.target.value)}
                       sx={{
                         borderRadius: 2,
+                        color: '#2C3E50',
+                        bgcolor: 'white',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#2C3E50',
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#2C3E50',
+                        },
+                        '& .MuiSelect-icon': {
+                          color: '#2C3E50',
+                        },
+                        '& .MuiPaper-root': {
+                          bgcolor: 'white',
+                        },
+                        '& .MuiMenuItem-root': {
+                          color: '#2C3E50',
+                          bgcolor: 'white',
+                          '&:hover': {
+                            bgcolor: '#f5f5f5',
+                          },
+                        },
+                      }}
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            bgcolor: 'white',
+                            '& .MuiMenuItem-root': {
+                              color: '#2C3E50',
+                              '&:hover': {
+                                bgcolor: '#f5f5f5',
+                              },
+                            },
+                          },
                         },
                       }}
                     >
@@ -804,18 +1023,49 @@ const BenefitTracking = () => {
                 
                 <Grid item xs={6} sm={6} md={2}>
                   <FormControl fullWidth>
-                    <InputLabel sx={{ color: '#666' }}>Birth Month</InputLabel>
+                    <InputLabel sx={{ color: '#2C3E50' }}>Birth Month</InputLabel>
                     <Select
                       value={filters.birthMonth}
                       label="Birth Month"
                       onChange={(e) => handleFilterChange('birthMonth', e.target.value)}
                       sx={{
                         borderRadius: 2,
+                        color: '#2C3E50',
+                        bgcolor: 'white',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2C3E50',
+                        },
                         '&:hover .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#2C3E50',
                         },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                           borderColor: '#2C3E50',
+                        },
+                        '& .MuiSelect-icon': {
+                          color: '#2C3E50',
+                        },
+                        '& .MuiPaper-root': {
+                          bgcolor: 'white',
+                        },
+                        '& .MuiMenuItem-root': {
+                          color: '#2C3E50',
+                          bgcolor: 'white',
+                          '&:hover': {
+                            bgcolor: '#f5f5f5',
+                          },
+                        },
+                      }}
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            bgcolor: 'white',
+                            '& .MuiMenuItem-root': {
+                              color: '#2C3E50',
+                              '&:hover': {
+                                bgcolor: '#f5f5f5',
+                              },
+                            },
+                          },
                         },
                       }}
                     >
@@ -842,12 +1092,20 @@ const BenefitTracking = () => {
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2,
+                        color: '#2C3E50',
                         '&:hover fieldset': {
                           borderColor: '#2C3E50',
                         },
                         '&.Mui-focused fieldset': {
                           borderColor: '#2C3E50',
                         },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#2C3E50',
+                      },
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#666',
+                        opacity: 0.7,
                       },
                     }}
                   />
@@ -866,8 +1124,9 @@ const BenefitTracking = () => {
                         color: '#2C3E50',
                         fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         '&:hover': {
-                          borderColor: '#1B2631',
-                          backgroundColor: '#f5f5f5'
+                          borderColor: '#f0f0f0',
+                          backgroundColor: '#f5f5f5',
+                          color: '#2C3E50'
                         }
                       }}
                     >
@@ -886,7 +1145,7 @@ const BenefitTracking = () => {
               alignItems: { xs: 'stretch', sm: 'center' }, 
               mb: { xs: 2, md: 3 },
               p: { xs: 1, md: 2 },
-              bgcolor: '#f8f9fa',
+              bgcolor: 'white',
               borderRadius: 2,
               border: '1px solid #e9ecef',
               gap: { xs: 2, sm: 0 }
@@ -927,14 +1186,14 @@ const BenefitTracking = () => {
                   startIcon={<PrintIcon />}
                   onClick={handlePrint}
                   sx={{ 
-                    bgcolor: '#2C3E50', 
+                    bgcolor: 'white', 
                     borderRadius: 2,
                     px: { xs: 2, md: 3 },
                     py: 1,
                     fontWeight: 'bold',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     '&:hover': { 
-                      bgcolor: '#1B2631',
+                      bgcolor: 'white',
                       transform: 'translateY(-1px)',
                       boxShadow: '0 4px 12px rgba(44, 62, 80, 0.3)'
                     },
@@ -942,6 +1201,28 @@ const BenefitTracking = () => {
                   }}
                 >
                   Print List
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<PdfIcon />}
+                  onClick={generatePDF}
+                  sx={{ 
+                    bgcolor: '#E74C3C', 
+                    borderRadius: 2,
+                    px: { xs: 2, md: 3 },
+                    py: 1,
+                    fontWeight: 'bold',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    color: 'white',
+                    '&:hover': { 
+                      bgcolor: '#C0392B',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(231, 76, 60, 0.3)'
+                    },
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
+                  Generate PDF
                 </Button>
               </Box>
             </Box>
@@ -955,13 +1236,14 @@ const BenefitTracking = () => {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                 border: '1px solid #e0e0e0',
                 overflow: 'auto',
-                maxHeight: { xs: '70vh', md: 'none' }
+                maxHeight: { xs: '70vh', md: 'none' },
+                bgcolor: 'white'
               }}
             >
               <Table sx={{ minWidth: 650 }} aria-label="PWD members table">
                 <TableHead>
                   <TableRow sx={{ 
-                    bgcolor: '#f8f9fa',
+                    bgcolor: 'white',
                     '& .MuiTableCell-head': {
                       fontWeight: 'bold',
                       color: '#2C3E50',
@@ -999,11 +1281,8 @@ const BenefitTracking = () => {
                         key={member.id} 
                         hover
                         sx={{ 
-                          '&:nth-of-type(odd)': {
-                            bgcolor: '#f8f9fa',
-                          },
                           '&:hover': {
-                            bgcolor: '#e3f2fd',
+                            bgcolor: '#f5f5f5',
                           },
                           '& .MuiTableCell-root': {
                             borderBottom: '1px solid #e9ecef',
@@ -1014,37 +1293,37 @@ const BenefitTracking = () => {
                       >
                         <TableCell sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
                           {member.pwd_id || (member.userID ? `PWD-${member.userID}` : (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
                               Not assigned
                             </Typography>
                           ))}
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ color: '#2C3E50' }}>
                           {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
                               Name not provided
                             </Typography>
                           )}
                         </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, color: '#2C3E50' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
                             {getAge(member.birthDate)}
                           </Typography>
                         </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: '#2C3E50' }}>
                           {member.birthDate ? (
-                            <Typography variant="body2">
+                            <Typography variant="body2" sx={{ color: '#2C3E50' }}>
                               {new Date(member.birthDate).toLocaleDateString()}
                             </Typography>
                           ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
                               Not provided
                             </Typography>
                           )}
                         </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: '#2C3E50' }}>
                           {member.disabilityType || (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
                               Not specified
                             </Typography>
                           )}
@@ -1064,8 +1343,8 @@ const BenefitTracking = () => {
                             }}
                           />
                         </TableCell>
-                        <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' }, color: '#2C3E50' }}>
+                          <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
                             Not available
                           </Typography>
                         </TableCell>
@@ -1076,7 +1355,7 @@ const BenefitTracking = () => {
             </Table>
           </TableContainer>
           </>
-        ) : (
+        ) : activeTab === 1 ? (
           /* Birthday Cash Gifts Tab */
           <>
             {/* Birthday Benefits Summary */}
@@ -1084,7 +1363,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #E67E22 0%, #F39C12 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(230, 126, 34, 0.3)',
                   borderRadius: 3
                 }}>
@@ -1115,7 +1394,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #27AE60 0%, #2ECC71 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(39, 174, 96, 0.3)',
                   borderRadius: 3
                 }}>
@@ -1146,7 +1425,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #3498DB 0%, #5DADE2 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(52, 152, 219, 0.3)',
                   borderRadius: 3
                 }}>
@@ -1177,7 +1456,7 @@ const BenefitTracking = () => {
               <Grid item xs={6} sm={6} md={3}>
                 <Card sx={{ 
                   background: 'linear-gradient(135deg, #E74C3C 0%, #EC7063 100%)',
-                  color: 'white',
+                  color: '#2C3E50',
                   boxShadow: '0 8px 32px rgba(231, 76, 60, 0.3)',
                   borderRadius: 3
                 }}>
@@ -1214,13 +1493,14 @@ const BenefitTracking = () => {
                 textAlign: 'center',
                 borderRadius: 3,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                border: '1px solid #e0e0e0'
+                border: '1px solid #e0e0e0',
+                bgcolor: 'white'
               }}>
                 <CakeIcon sx={{ fontSize: 60, color: '#BDC3C7', mb: 2 }} />
-                <Typography variant="h6" sx={{ color: '#7F8C8D', mb: 1, fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ color: '#2C3E50', mb: 1, fontWeight: 600 }}>
                   No Birthday Cash Gift Benefits Available
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#95A5A6', mb: 3 }}>
+                <Typography variant="body2" sx={{ color: '#2C3E50', mb: 3 }}>
                   Add birthday cash gift benefits in the Ayuda page to track beneficiaries here
                 </Typography>
                 <Button
@@ -1243,21 +1523,21 @@ const BenefitTracking = () => {
                 >
                   Refresh Benefits
                 </Button>
-                <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', mt: 2 }}>
+                <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mt: 2 }}>
                   Debug: Check browser console for localStorage data
                 </Typography>
                 <Box sx={{ mt: 2, p: 2, bgcolor: '#F8F9FA', borderRadius: 2, textAlign: 'left' }}>
-                  <Typography variant="caption" sx={{ color: '#7F8C8D', fontWeight: 600, display: 'block', mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: '#2C3E50', fontWeight: 600, display: 'block', mb: 1 }}>
                     Debug Information:
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', fontSize: '0.7rem' }}>
+                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
                     Total benefits in localStorage: {localStorage.getItem('benefits') ? JSON.parse(localStorage.getItem('benefits')).length : 0}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', fontSize: '0.7rem' }}>
+                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
                     Birthday benefits found: {birthdayBenefits.length}
                   </Typography>
                   {localStorage.getItem('benefits') && (
-                    <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', fontSize: '0.7rem', mt: 1 }}>
+                    <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem', mt: 1 }}>
                       Raw data: {localStorage.getItem('benefits').substring(0, 100)}...
                     </Typography>
                   )}
@@ -1272,17 +1552,17 @@ const BenefitTracking = () => {
                   borderRadius: 3,
                   boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                   border: '1px solid #e0e0e0',
-                  bgcolor: '#F8F9FA'
+                  bgcolor: 'white'
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 1 }}>
                         QR Code Claim Scanner
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                      <Typography variant="body2" sx={{ color: '#2C3E50' }}>
                         Scan PWD member QR codes to update claim status for birthday benefits
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block', mt: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mt: 0.5 }}>
                         📱 Works on mobile devices with camera access
                       </Typography>
                     </Box>
@@ -1309,7 +1589,8 @@ const BenefitTracking = () => {
                   mb: 3, 
                   borderRadius: 3,
                   boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                  border: '1px solid #e0e0e0'
+                  border: '1px solid #e0e0e0',
+                  bgcolor: 'white'
                 }}>
                   <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 2 }}>
                     Select Birthday Cash Gift Benefit
@@ -1320,8 +1601,9 @@ const BenefitTracking = () => {
                         <Card 
                           sx={{ 
                             cursor: 'pointer',
-                            border: selectedBenefit?.id === benefit.id ? '2px solid #E67E22' : '1px solid #E0E0E0',
+                            border: selectedBenefit?.id === benefit.id ? '2px solid #2C3E50' : '1px solid #E0E0E0',
                             borderRadius: 2,
+                            bgcolor: 'white',
                             '&:hover': { 
                               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                               transform: 'translateY(-2px)',
@@ -1330,25 +1612,25 @@ const BenefitTracking = () => {
                           }}
                           onClick={() => handleBenefitSelect(benefit)}
                         >
-                          <CardContent sx={{ p: 2 }}>
+                          <CardContent sx={{ p: 2, bgcolor: 'white' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                              <CakeIcon sx={{ color: '#E67E22', mr: 1 }} />
+                              <CakeIcon sx={{ color: '#2C3E50', mr: 1 }} />
                               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
                                 {benefit.name}
                               </Typography>
                             </Box>
-                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#E67E22', mb: 1 }}>
+                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
                               {benefit.amount}
                             </Typography>
-                            <Typography variant="body2" sx={{ color: '#7F8C8D', mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: '#2C3E50', mb: 1 }}>
                               {benefit.description}
                             </Typography>
                             <Chip 
-                              label={getQuarterName(benefit.birthdayMonth)} 
+                              label={benefit.type === 'Birthday Cash Gift' ? getQuarterName(benefit.birthdayMonth) : benefit.quarter || 'All Months'} 
                               size="small" 
                               sx={{ 
-                                bgcolor: '#E67E2215', 
-                                color: '#E67E22',
+                                bgcolor: '#F5F5F5', 
+                                color: '#2C3E50',
                                 fontWeight: 600,
                                 fontSize: '0.75rem'
                               }}
@@ -1366,12 +1648,13 @@ const BenefitTracking = () => {
                     borderRadius: 3,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                     border: '1px solid #e0e0e0',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    bgcolor: 'white'
                   }}>
                     <Box sx={{ 
                       p: 3, 
                       bgcolor: '#E67E22', 
-                      color: 'white' 
+                      color: '#2C3E50' 
                     }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                         Eligible Beneficiaries for {selectedBenefit.name}
@@ -1381,11 +1664,11 @@ const BenefitTracking = () => {
                       </Typography>
                     </Box>
                     
-                    <TableContainer>
+                    <TableContainer sx={{ bgcolor: 'white' }}>
                       <Table>
                         <TableHead>
                           <TableRow sx={{ 
-                            bgcolor: '#f8f9fa',
+                            bgcolor: 'white',
                             '& .MuiTableCell-head': {
                               fontWeight: 'bold',
                               color: '#2C3E50',
@@ -1422,11 +1705,8 @@ const BenefitTracking = () => {
                                 key={member.id} 
                                 hover
                                 sx={{ 
-                                  '&:nth-of-type(odd)': {
-                                    bgcolor: '#f8f9fa',
-                                  },
                                   '&:hover': {
-                                    bgcolor: '#e3f2fd',
+                                    bgcolor: '#f5f5f5',
                                   },
                                   '& .MuiTableCell-root': {
                                     borderBottom: '1px solid #e9ecef',
@@ -1434,23 +1714,23 @@ const BenefitTracking = () => {
                                   }
                                 }}
                               >
-                                <TableCell sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
-                                  {member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned')}
-                                </TableCell>
-                                <TableCell>
+                            <TableCell sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
+                              {member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned')}
+                            </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
                                   {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided'}
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
                                     {getMonthName(new Date(member.birthDate).getMonth() + 1)}
                                   </Typography>
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
                                     {getAge(member.birthDate)}
                                   </Typography>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
                                   {member.disabilityType || 'Not specified'}
                                 </TableCell>
                                 <TableCell>
@@ -1472,13 +1752,13 @@ const BenefitTracking = () => {
                                     }}
                                   />
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
                                   {member.claimDate ? (
-                                    <Typography variant="body2">
+                                    <Typography variant="body2" sx={{ color: '#2C3E50' }}>
                                       {new Date(member.claimDate).toLocaleDateString()}
                                     </Typography>
                                   ) : (
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                    <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
                                       Not claimed
                                     </Typography>
                                   )}
@@ -1494,6 +1774,425 @@ const BenefitTracking = () => {
               </>
             )}
           </>
+          ) : (
+          /* Financial Assistance Tab */
+          <Box sx={{ bgcolor: 'white' }}>
+            {/* Financial Assistance Summary */}
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, md: 4 } }}>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #E67E22 0%, #F39C12 100%)',
+                  color: '#2C3E50',
+                  boxShadow: '0 8px 32px rgba(230, 126, 34, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Financial Assistance Benefits
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {financialBenefits.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #27AE60 0%, #2ECC71 100%)',
+                  color: '#2C3E50',
+                  boxShadow: '0 8px 32px rgba(39, 174, 96, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Total Eligible
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {eligibleBeneficiaries.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #3498DB 0%, #5DADE2 100%)',
+                  color: '#2C3E50',
+                  boxShadow: '0 8px 32px rgba(52, 152, 219, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Claimed
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {eligibleBeneficiaries.filter(b => b.claimStatus === 'claimed').length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={6} md={3}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #E74C3C 0%, #EC7063 100%)',
+                  color: '#2C3E50',
+                  boxShadow: '0 8px 32px rgba(231, 76, 60, 0.3)',
+                  borderRadius: 3
+                }}>
+                  <CardContent sx={{ textAlign: 'center', py: { xs: 2, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        opacity: 0.9, 
+                        mb: 1,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+                      }}
+                    >
+                      Unclaimed
+                    </Typography>
+                    <Typography 
+                      variant="h3" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' }
+                      }}
+                    >
+                      {eligibleBeneficiaries.filter(b => b.claimStatus === 'unclaimed').length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Financial Assistance Benefits Selection */}
+            {financialBenefits.length === 0 ? (
+              <Paper sx={{ 
+                p: { xs: 4, md: 6 }, 
+                textAlign: 'center',
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: '1px solid #e0e0e0',
+                bgcolor: 'white'
+              }}>
+                <CakeIcon sx={{ fontSize: 60, color: '#BDC3C7', mb: 2 }} />
+                <Typography variant="h6" sx={{ color: '#2C3E50', mb: 1, fontWeight: 600 }}>
+                  No Financial Assistance Benefits Available
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#2C3E50', mb: 3 }}>
+                  Add financial assistance benefits in the Ayuda page to track beneficiaries here
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={loadBirthdayBenefits}
+                  sx={{
+                    borderColor: '#E67E22',
+                    color: '#E67E22',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1,
+                    borderRadius: 2,
+                    '&:hover': {
+                      borderColor: '#D35400',
+                      backgroundColor: '#E67E2215',
+                      color: '#D35400'
+                    }
+                  }}
+                >
+                  Refresh Benefits
+                </Button>
+                <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mt: 2 }}>
+                  Debug: Check browser console for localStorage data
+                </Typography>
+                <Box sx={{ mt: 2, p: 2, bgcolor: '#F8F9FA', borderRadius: 2, textAlign: 'left' }}>
+                  <Typography variant="caption" sx={{ color: '#2C3E50', fontWeight: 600, display: 'block', mb: 1 }}>
+                    Debug Information:
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
+                    Total benefits in localStorage: {localStorage.getItem('benefits') ? JSON.parse(localStorage.getItem('benefits')).length : 0}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
+                    Financial assistance benefits found: {financialBenefits.length}
+                  </Typography>
+                  {localStorage.getItem('benefits') && (
+                    <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem', mt: 1 }}>
+                      Raw data: {localStorage.getItem('benefits').substring(0, 100)}...
+                    </Typography>
+                  )}
+                </Box>
+              </Paper>
+            ) : (
+              <>
+                {/* QR Scanner Button */}
+                <Paper sx={{ 
+                  p: 3, 
+                  mb: 3, 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  border: '1px solid #e0e0e0',
+                  bgcolor: 'white'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 1 }}>
+                        QR Code Claim Scanner
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#2C3E50' }}>
+                        Scan PWD member QR codes to update claim status for financial assistance benefits
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mt: 0.5 }}>
+                        📱 Works on mobile devices with camera access
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      startIcon={<QrCodeScannerIcon />}
+                      onClick={handleOpenQRScanner}
+                      sx={{
+                        bgcolor: '#E67E22',
+                        '&:hover': { bgcolor: '#D35400' },
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 2,
+                        fontWeight: 600,
+                        textTransform: 'none'
+                      }}
+                    >
+                      Open QR Scanner
+                    </Button>
+                  </Box>
+                </Paper>
+                <Paper sx={{ 
+                  p: 3, 
+                  mb: 3, 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  border: '1px solid #e0e0e0',
+                  bgcolor: 'white'
+                }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 2 }}>
+                    Select Financial Assistance Benefit
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {financialBenefits.map((benefit) => (
+                      <Grid item xs={12} sm={6} md={4} key={benefit.id}>
+                        <Card 
+                          sx={{ 
+                            cursor: 'pointer',
+                            border: selectedBenefit?.id === benefit.id ? '2px solid #2C3E50' : '1px solid #E0E0E0',
+                            borderRadius: 2,
+                            bgcolor: 'white',
+                            '&:hover': { 
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.3s ease'
+                            }
+                          }}
+                          onClick={() => handleBenefitSelect(benefit)}
+                        >
+                          <CardContent sx={{ p: 2, bgcolor: 'white' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <CakeIcon sx={{ color: '#2C3E50', mr: 1 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                                {benefit.name}
+                              </Typography>
+                            </Box>
+                            <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                              {benefit.amount}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#2C3E50', mb: 1 }}>
+                              {benefit.description}
+                            </Typography>
+                            <Chip 
+                              label={benefit.type === 'Birthday Cash Gift' ? getQuarterName(benefit.birthdayMonth) : benefit.quarter || 'All Months'} 
+                              size="small" 
+                              sx={{ 
+                                bgcolor: '#F5F5F5', 
+                                color: '#2C3E50',
+                                fontWeight: 600,
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Paper>
+
+                {/* Beneficiaries List */}
+                {selectedBenefit && (
+                  <Paper sx={{ 
+                    borderRadius: 3,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                    border: '1px solid #e0e0e0',
+                    overflow: 'hidden',
+                    bgcolor: 'white'
+                  }}>
+                    <Box sx={{ 
+                      p: 3, 
+                      bgcolor: '#E67E22', 
+                      color: '#2C3E50' 
+                    }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        Eligible Beneficiaries for {selectedBenefit.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        {getQuarterName(selectedBenefit.birthdayMonth)} • {eligibleBeneficiaries.length} eligible members
+                      </Typography>
+                    </Box>
+                    
+                    <TableContainer sx={{ bgcolor: 'white' }}>
+                      <Table>
+                        <TableHead>
+                          <TableRow sx={{ 
+                            bgcolor: 'white',
+                            '& .MuiTableCell-head': {
+                              fontWeight: 'bold',
+                              color: '#2C3E50',
+                              fontSize: '0.95rem',
+                              borderBottom: '2px solid #dee2e6'
+                            }
+                          }}>
+                            <TableCell>PWD ID</TableCell>
+                            <TableCell>Full Name</TableCell>
+                            <TableCell>Birth Month</TableCell>
+                            <TableCell>Age</TableCell>
+                            <TableCell>Disability Type</TableCell>
+                            <TableCell>Claim Status</TableCell>
+                            <TableCell>Claim Date</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {eligibleBeneficiaries.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                                <Box sx={{ textAlign: 'center' }}>
+                                  <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                                    No eligible beneficiaries found
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    No PWD members have birthdays in {getQuarterName(selectedBenefit.birthdayMonth)}
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            eligibleBeneficiaries.map((member, index) => (
+                              <TableRow 
+                                key={member.id} 
+                                hover
+                                sx={{ 
+                                  '&:hover': {
+                                    bgcolor: '#f5f5f5',
+                                  },
+                                  '& .MuiTableCell-root': {
+                                    borderBottom: '1px solid #e9ecef',
+                                    py: 2
+                                  }
+                                }}
+                              >
+                            <TableCell sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
+                              {member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned')}
+                            </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided'}
+                                </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
+                                    {getMonthName(new Date(member.birthDate).getMonth() + 1)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
+                                    {getAge(member.birthDate)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  {member.disabilityType || 'Not specified'}
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    icon={member.claimStatus === 'claimed' ? <CheckCircleIcon /> : <CancelIcon />}
+                                    label={member.claimStatus === 'claimed' ? 'Claimed' : 'Unclaimed'}
+                                    color={member.claimStatus === 'claimed' ? 'success' : 'error'}
+                                    size="small"
+                                    sx={{ 
+                                      fontWeight: 'bold',
+                                      '&.MuiChip-colorSuccess': {
+                                        bgcolor: '#d4edda',
+                                        color: '#155724'
+                                      },
+                                      '&.MuiChip-colorError': {
+                                        bgcolor: '#f8d7da',
+                                        color: '#721c24'
+                                      }
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  {member.claimDate ? (
+                                    <Typography variant="body2" sx={{ color: '#2C3E50' }}>
+                                      {new Date(member.claimDate).toLocaleDateString()}
+                                    </Typography>
+                                  ) : (
+                                    <Typography variant="body2" sx={{ color: '#2C3E50', fontStyle: 'italic' }}>
+                                      Not claimed
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Paper>
+                )}
+              </>
+            )}
+          </Box>
           )}
         </Container>
       </Box>

@@ -39,6 +39,7 @@
   import AdminSidebar from '../shared/AdminSidebar';
   import { applicationService } from '../../services/applicationService';
   import pwdMemberService from '../../services/pwdMemberService';
+  import { useAuth } from '../../contexts/AuthContext';
   import { 
     mainContainerStyles, 
     contentAreaStyles, 
@@ -55,6 +56,7 @@
   } from '../../utils/themeStyles';
 
   function PWDRecords() {
+    const { currentUser } = useAuth();
     const [tab, setTab] = React.useState(0);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
@@ -95,11 +97,17 @@
     // Fetch applications and PWD members from database
     useEffect(() => {
       const fetchData = async () => {
+        // Only fetch data if user is authenticated
+        if (!currentUser) {
+          console.log('User not authenticated, skipping data fetch');
+          return;
+        }
+
         setLoading(true);
         setError(null);
         try {
           // Fetch applications pending admin approval using applicationService
-          const applicationsData = await applicationService.getByStatus('Pending Admin Approval');
+          const applicationsData = await applicationService.getByStatus('Pending Barangay Approval');
           setApplications(applicationsData);
           
           // Fetch PWD members using pwdMemberService
@@ -117,7 +125,7 @@
       };
 
       fetchData();
-    }, []);
+    }, [currentUser]);
 
     const handleApproveApplication = async (applicationId) => {
       try {
@@ -127,7 +135,7 @@
         });
 
         // Refresh the applications list
-        const data = await applicationService.getByStatus('Pending Admin Approval');
+        const data = await applicationService.getByStatus('Pending Barangay Approval');
         setApplications(data);
         alert('Application approved successfully! PWD Member created.');
       } catch (err) {
@@ -147,7 +155,7 @@
         });
 
         // Refresh the applications list
-        const data = await applicationService.getByStatus('Pending Admin Approval');
+        const data = await applicationService.getByStatus('Pending Barangay Approval');
         setApplications(data);
         alert('Application rejected successfully!');
       } catch (err) {
@@ -330,14 +338,54 @@
 
     const hasActiveFilters = Object.values(filters).some(value => value !== '');
 
+    // Check if user is authenticated and is an admin
+    if (!currentUser) {
+      return (
+        <Box sx={{ ...mainContainerStyles, bgcolor: 'white', p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ color: '#E74C3C' }}>
+            Please log in to access this page.
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (currentUser.role !== 'Admin') {
+      return (
+        <Box sx={{ ...mainContainerStyles, bgcolor: 'white', p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ color: '#E74C3C' }}>
+            Access denied. Admin privileges required.
+          </Typography>
+        </Box>
+      );
+    }
+
     return (
-      <Box sx={mainContainerStyles}>
+      <Box sx={{ ...mainContainerStyles, bgcolor: 'white' }}>
         <AdminSidebar />
 
         {/* Main content */}
-        <Box sx={contentAreaStyles}>
-          <Box sx={{ p: 3 }}>
-            <Paper sx={cardStyles}>
+        <Box sx={{ ...contentAreaStyles, bgcolor: 'white' }}>
+          <Box sx={{ p: 4, m: 2 }}>
+            <Paper sx={{ ...cardStyles, p: 3, bgcolor: 'white' }}>
+              {/* Header */}
+              <Box sx={{ mb: 3, textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ 
+                  fontWeight: 700, 
+                  color: '#0b87ac',
+                  mb: 1,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  PWD Member Records
+                </Typography>
+                <Typography variant="body1" sx={{ 
+                  color: '#7F8C8D',
+                  fontWeight: 500
+                }}>
+                  Manage and track PWD member information and applications
+                </Typography>
+              </Box>
+
               <Grid container spacing={2} alignItems="center">
                 <Grid item>
                   <Tabs 
@@ -346,17 +394,23 @@
                     sx={{ 
                       minHeight: 40,
                       '& .MuiTab-root': {
-                        color: '#FFFFFF',
+                        color: '#0b87ac',
                         fontWeight: 600,
                         textTransform: 'none',
-                        bgcolor: '#3498DB',
+                        bgcolor: 'transparent',
                         borderRadius: '8px 8px 0 0',
                         mx: 0.5,
                         px: 3,
+                        border: '1px solid #E0E0E0',
+                        '&:hover': {
+                          bgcolor: '#F8FAFC',
+                          color: '#0b87ac'
+                        },
                         '&.Mui-selected': {
                           color: '#FFFFFF !important',
                           fontWeight: 700,
-                          bgcolor: '#2C3E50 !important'
+                          bgcolor: '#0b87ac !important',
+                          border: '1px solid #0b87ac'
                         }
                       },
                       '& .MuiTabs-indicator': {
@@ -375,11 +429,11 @@
                     sx={{ 
                       textTransform: 'none',
                       color: '#FFFFFF',
-                      bgcolor: '#3498DB',
-                      borderColor: '#3498DB',
+                      bgcolor: '#0b87ac',
+                      borderColor: '#0b87ac',
                       '&:hover': {
-                        borderColor: '#2980B9',
-                        bgcolor: '#2980B9',
+                        borderColor: '#0a6b8a',
+                        bgcolor: '#0a6b8a',
                         color: '#FFFFFF'
                       }
                     }}
@@ -395,12 +449,12 @@
                     sx={{ 
                       textTransform: 'none',
                       bgcolor: showFilters ? '#27AE60' : '#FFFFFF',
-                      color: showFilters ? '#FFFFFF' : '#2C3E50',
-                      borderColor: '#3498DB',
+                      color: showFilters ? '#FFFFFF' : '#0b87ac',
+                      borderColor: '#0b87ac',
                       '&:hover': {
                         bgcolor: showFilters ? '#229954' : '#F8FAFC',
-                        borderColor: '#3498DB',
-                        color: showFilters ? '#FFFFFF' : '#2C3E50'
+                        borderColor: '#0b87ac',
+                        color: showFilters ? '#FFFFFF' : '#0b87ac'
                       }
                     }}
                   >
@@ -421,10 +475,10 @@
                           bgcolor: '#FFFFFF',
                           '& fieldset': { borderColor: '#E0E0E0' },
                           '&:hover fieldset': { borderColor: '#BDC3C7' },
-                          '&.Mui-focused fieldset': { borderColor: '#3498DB' },
+                          '&.Mui-focused fieldset': { borderColor: '#0b87ac' },
                         },
                         '& .MuiInputBase-input': {
-                          color: '#2C3E50',
+                          color: '#0b87ac',
                           fontSize: '0.9rem',
                           '&::placeholder': {
                             color: '#95A5A6',
@@ -448,9 +502,9 @@
 
               {/* Filter Section */}
               <Collapse in={showFilters}>
-                <Box sx={{ mt: 2, p: 3, bgcolor: '#F8FAFC', borderRadius: 1, border: '1px solid #E0E0E0' }}>
+                <Box sx={{ mt: 3, p: 4, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E0E0E0', m: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#0b87ac' }}>
                       Search Filters
                     </Typography>
                     {hasActiveFilters && (
@@ -472,10 +526,10 @@
                     )}
                   </Box>
                   
-                                                                      <Grid container spacing={3}>
+                                                                      <Grid container spacing={4}>
                       <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth size="small">
-                          <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Barangay</InputLabel>
+                          <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Barangay</InputLabel>
                           <Select
                             value={filters.barangay}
                             onChange={(e) => handleFilterChange('barangay', e.target.value)}
@@ -484,7 +538,7 @@
                               bgcolor: '#FFFFFF',
                               minWidth: 200,
                               '& .MuiSelect-select': {
-                                color: '#2C3E50',
+                                color: '#0b87ac',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5
@@ -496,7 +550,7 @@
                                 borderColor: '#BDC3C7'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#3498DB'
+                                borderColor: '#0b87ac'
                               },
                               '& .MuiPaper-root': {
                                 bgcolor: '#FFFFFF'
@@ -508,7 +562,7 @@
                                   bgcolor: '#FFFFFF',
                                   minWidth: 250,
                                   '& .MuiMenuItem-root': {
-                                    color: '#2C3E50',
+                                    color: '#0b87ac',
                                     fontWeight: 600,
                                     fontSize: '0.9rem',
                                     py: 1.5,
@@ -529,7 +583,7 @@
                           >
                           <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Barangays</MenuItem>
                           {barangays.map(barangay => (
-                            <MenuItem key={barangay} value={barangay} sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                            <MenuItem key={barangay} value={barangay} sx={{ color: '#0b87ac', fontWeight: 600 }}>
                               {barangay}
                             </MenuItem>
                           ))}
@@ -539,7 +593,7 @@
                     
                                         <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth size="small">
-                          <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Disability Type</InputLabel>
+                          <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Disability Type</InputLabel>
                           <Select
                             value={filters.disability}
                             onChange={(e) => handleFilterChange('disability', e.target.value)}
@@ -548,7 +602,7 @@
                               bgcolor: '#FFFFFF',
                               minWidth: 200,
                               '& .MuiSelect-select': {
-                                color: '#2C3E50',
+                                color: '#0b87ac',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5
@@ -560,7 +614,7 @@
                                 borderColor: '#BDC3C7'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#3498DB'
+                                borderColor: '#0b87ac'
                               },
                               '& .MuiPaper-root': {
                                 bgcolor: '#FFFFFF'
@@ -572,7 +626,7 @@
                                   bgcolor: '#FFFFFF',
                                   minWidth: 250,
                                   '& .MuiMenuItem-root': {
-                                    color: '#2C3E50',
+                                    color: '#0b87ac',
                                     fontWeight: 600,
                                     fontSize: '0.9rem',
                                     py: 1.5,
@@ -593,7 +647,7 @@
                           >
                           <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Disabilities</MenuItem>
                           {disabilityTypes.map(disability => (
-                            <MenuItem key={disability} value={disability} sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                            <MenuItem key={disability} value={disability} sx={{ color: '#0b87ac', fontWeight: 600 }}>
                               {disability}
                             </MenuItem>
                           ))}
@@ -603,7 +657,7 @@
                     
                                         <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth size="small">
-                          <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Age Range</InputLabel>
+                          <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Age Range</InputLabel>
                           <Select
                             value={filters.ageRange}
                             onChange={(e) => handleFilterChange('ageRange', e.target.value)}
@@ -612,7 +666,7 @@
                               bgcolor: '#FFFFFF',
                               minWidth: 200,
                               '& .MuiSelect-select': {
-                                color: '#2C3E50',
+                                color: '#0b87ac',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5
@@ -624,7 +678,7 @@
                                 borderColor: '#BDC3C7'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#3498DB'
+                                borderColor: '#0b87ac'
                               },
                               '& .MuiPaper-root': {
                                 bgcolor: '#FFFFFF'
@@ -636,7 +690,7 @@
                                   bgcolor: '#FFFFFF',
                                   minWidth: 250,
                                   '& .MuiMenuItem-root': {
-                                    color: '#2C3E50',
+                                    color: '#0b87ac',
                                     fontWeight: 600,
                                     fontSize: '0.9rem',
                                     py: 1.5,
@@ -657,7 +711,7 @@
                           >
                           <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Ages</MenuItem>
                           {ageRanges.map(range => (
-                            <MenuItem key={range} value={range} sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                            <MenuItem key={range} value={range} sx={{ color: '#0b87ac', fontWeight: 600 }}>
                               {range}
                             </MenuItem>
                           ))}
@@ -667,7 +721,7 @@
                     
                                         <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth size="small">
-                          <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Status</InputLabel>
+                          <InputLabel sx={{ color: '#0b87ac', fontWeight: 600 }}>Status</InputLabel>
                           <Select
                             value={filters.status}
                             onChange={(e) => handleFilterChange('status', e.target.value)}
@@ -676,7 +730,7 @@
                               bgcolor: '#FFFFFF',
                               minWidth: 200,
                               '& .MuiSelect-select': {
-                                color: '#2C3E50',
+                                color: '#0b87ac',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5
@@ -688,7 +742,7 @@
                                 borderColor: '#BDC3C7'
                               },
                               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: '#3498DB'
+                                borderColor: '#0b87ac'
                               },
                               '& .MuiPaper-root': {
                                 bgcolor: '#FFFFFF'
@@ -700,7 +754,7 @@
                                   bgcolor: '#FFFFFF',
                                   minWidth: 250,
                                   '& .MuiMenuItem-root': {
-                                    color: '#2C3E50',
+                                    color: '#0b87ac',
                                     fontWeight: 600,
                                     fontSize: '0.9rem',
                                     py: 1.5,
@@ -721,7 +775,7 @@
                           >
                           <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Statuses</MenuItem>
                           {statuses.map(status => (
-                            <MenuItem key={status} value={status} sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                            <MenuItem key={status} value={status} sx={{ color: '#0b87ac', fontWeight: 600 }}>
                               {status}
                             </MenuItem>
                           ))}
@@ -733,7 +787,7 @@
                                   {/* Active Filters Display */}
                   {hasActiveFilters && (
                     <Box sx={{ mt: 3 }}>
-                      <Typography variant="body2" sx={{ color: '#2C3E50', mb: 2, fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ color: '#0b87ac', mb: 2, fontWeight: 600 }}>
                         Active Filters:
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -746,7 +800,7 @@
                                 onDelete={() => handleFilterChange(key, '')}
                                 size="small"
                                 sx={{ 
-                                  bgcolor: '#3498DB', 
+                                  bgcolor: '#0b87ac', 
                                   color: '#FFFFFF',
                                   fontWeight: 600,
                                   '& .MuiChip-deleteIcon': {
@@ -767,14 +821,14 @@
                 </Box>
               </Collapse>
 
-              <Box sx={{ borderTop: '2px solid #BDC3C7', mt: 2 }} />
+              <Box sx={{ borderTop: '2px solid #BDC3C7', mt: 3, mx: 1 }} />
 
-                          {/* Results Summary */}
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {/* Results Summary */}
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', mx: 1 }}>
                 <Typography variant="body2" sx={{ 
                   color: '#FFFFFF', 
                   fontWeight: 700, 
-                  bgcolor: '#3498DB',
+                  bgcolor: '#0b87ac',
                   px: 2,
                   py: 1,
                   borderRadius: 1,
@@ -785,17 +839,17 @@
                 </Typography>
               </Box>
 
-              <Box sx={{ mt: 3 }}>
-                <Paper elevation={0} sx={{ border: '1px solid #D6DBDF', borderRadius: 1, overflow: 'hidden' }}>
-                  <Box sx={{ bgcolor: '#2C3E50', color: '#ECF0F1', p: 1.5 }}>
-                    <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#FFFFFF' }}>
+              <Box sx={{ mt: 4, mx: 1 }}>
+                <Paper elevation={0} sx={{ border: '1px solid #D6DBDF', borderRadius: 2, overflow: 'hidden', p: 1, bgcolor: 'white' }}>
+                  <Box sx={{ bgcolor: 'white', color: '#0b87ac', p: 2, m: 1, borderBottom: '2px solid #E0E0E0' }}>
+                    <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#0b87ac' }}>
                       {tab === 0 ? 'PWD MASTERLIST' : 'PENDING APPLICATIONS'}
                     </Typography>
                   </Box>
 
                   {loading && (
                     <Box sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography sx={{ color: '#2C3E50' }}>Loading...</Typography>
+                      <Typography sx={{ color: '#0b87ac' }}>Loading...</Typography>
                     </Box>
                   )}
 
@@ -808,60 +862,60 @@
                   {!loading && !error && (
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ bgcolor: '#2C3E50' }}>
+                      <TableRow sx={{ bgcolor: 'white', borderBottom: '2px solid #E0E0E0' }}>
                           {tab === 0 ? (
                             <>
-                              <TableCell width={60} sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell width={60} sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 PWD ID NO.
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Name
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Age
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Barangay
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Disability
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Guardian Name
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Contact No.
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Status
                               </TableCell>
                             </>
                           ) : (
                             <>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Application ID
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Name
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Email
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Disability Type
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Contact Number
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Submission Date
                               </TableCell>
-                              <TableCell sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <TableCell sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                                 Status
                               </TableCell>
                             </>
                           )}
-                          <TableCell align="right" sx={{ color: '#FFFFFF', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <TableCell align="right" sx={{ color: '#0b87ac', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', py: 2, px: 2 }}>
                             Actions
                           </TableCell>
                       </TableRow>
@@ -871,28 +925,28 @@
                           <TableRow key={row.applicationID || row.id} sx={{ bgcolor: idx % 2 ? '#F7FBFF' : 'white' }}>
                             {tab === 0 ? (
                               <>
-                                <TableCell sx={{ color: '#34495E', fontWeight: 600, fontSize: '0.8rem' }}>
+                                <TableCell sx={{ color: '#34495E', fontWeight: 600, fontSize: '0.8rem', py: 2, px: 2 }}>
                                   {row.pwdId}
                                 </TableCell>
-                                <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#0b87ac', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.name}
                                 </TableCell>
-                                <TableCell sx={{ color: '#34495E', fontWeight: 600 }}>
+                                <TableCell sx={{ color: '#34495E', fontWeight: 600, py: 2, px: 2 }}>
                                   {row.age}
                                 </TableCell>
-                                <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#0b87ac', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.barangay}
                                 </TableCell>
-                                <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#0b87ac', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.disability}
                                 </TableCell>
-                                <TableCell sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#0b87ac', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.guardian}
                                 </TableCell>
-                                <TableCell sx={{ color: '#34495E', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#34495E', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.contact}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ py: 2, px: 2 }}>
                                   <Chip 
                                     label={row.status} 
                                     size="small"
@@ -909,25 +963,25 @@
                               </>
                             ) : (
                               <>
-                                <TableCell sx={{ color: '#34495E', fontWeight: 600, fontSize: '0.8rem' }}>
+                                <TableCell sx={{ color: '#34495E', fontWeight: 600, fontSize: '0.8rem', py: 2, px: 2 }}>
                                   {row.applicationID}
                                 </TableCell>
-                                <TableCell sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                                <TableCell sx={{ color: '#0b87ac', fontWeight: 600, py: 2, px: 2 }}>
                                   {`${row.firstName} ${row.lastName}`}
                                 </TableCell>
-                                <TableCell sx={{ color: '#D35400', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#D35400', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.email}
                                 </TableCell>
-                                <TableCell sx={{ color: '#8E44AD', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#8E44AD', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.disabilityType}
                                 </TableCell>
-                                <TableCell sx={{ color: '#16A085', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#16A085', fontWeight: 500, py: 2, px: 2 }}>
                                   {row.contactNumber}
                                 </TableCell>
-                                <TableCell sx={{ color: '#E67E22', fontWeight: 500 }}>
+                                <TableCell sx={{ color: '#E67E22', fontWeight: 500, py: 2, px: 2 }}>
                                   {new Date(row.submissionDate).toLocaleDateString()}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ py: 2, px: 2 }}>
                                   <Chip 
                                     label={row.status || 'Pending'} 
                                     size="small"
@@ -946,20 +1000,20 @@
                                 </TableCell>
                               </>
                             )}
-                          <TableCell align="right">
+                          <TableCell align="right" sx={{ py: 2, px: 2 }}>
                             {tab === 0 ? (
                               <Button 
                                 size="small" 
                                 variant="outlined" 
                                 sx={{ 
                                   textTransform: 'none',
-                                  color: '#3498DB',
-                                  borderColor: '#3498DB',
+                                  color: '#0b87ac',
+                                  borderColor: '#0b87ac',
                                   fontWeight: 600,
                                   '&:hover': {
-                                    bgcolor: '#3498DB',
+                                    bgcolor: '#0b87ac',
                                     color: '#FFFFFF',
-                                    borderColor: '#3498DB'
+                                    borderColor: '#0b87ac'
                                   }
                                 }}
                               >
@@ -973,15 +1027,15 @@
                                   startIcon={<VisibilityIcon />}
                                   onClick={() => handleViewDetails(row)}
                                   sx={{
-                                    borderColor: '#3498DB',
-                                    color: '#3498DB',
+                                    borderColor: '#0b87ac',
+                                    color: '#0b87ac',
                                     textTransform: 'none',
                                     fontSize: '0.7rem',
                                     py: 0.5,
                                     px: 1,
                                     '&:hover': {
-                                      borderColor: '#2980B9',
-                                      bgcolor: '#3498DB',
+                                      borderColor: '#0a6b8a',
+                                      bgcolor: '#0b87ac',
                                       color: '#FFFFFF'
                                     }
                                   }}
@@ -1047,12 +1101,14 @@
           PaperProps={{
             sx: {
               borderRadius: 3,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              p: 2,
+              m: 2
             }
           }}
         >
           <DialogTitle sx={{ 
-            bgcolor: '#2C3E50', 
+            bgcolor: '#0b87ac', 
             color: 'white', 
             textAlign: 'center',
             py: 2,
@@ -1075,9 +1131,9 @@
             </IconButton>
           </DialogTitle>
           
-          <DialogContent sx={{ p: 0 }}>
+          <DialogContent sx={{ p: 2 }}>
             {selectedApplication && (
-              <Box id="application-details" sx={{ p: 3 }}>
+              <Box id="application-details" sx={{ p: 4 }}>
                 {/* Header Section */}
                 <Paper sx={{ 
                   p: 3, 
@@ -1089,7 +1145,7 @@
                   <Box sx={{ textAlign: 'center', mb: 3 }}>
                     <Typography variant="h5" sx={{ 
                       fontWeight: 'bold', 
-                      color: '#2C3E50',
+                      color: '#0b87ac',
                       mb: 1
                     }}>
                       CABUYAO PDAO RMS
@@ -1107,7 +1163,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E' }}>
                         Application ID:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50' }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac' }}>
                         {selectedApplication.applicationID}
                       </Typography>
                     </Grid>
@@ -1115,7 +1171,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E' }}>
                         Submission Date:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50' }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac' }}>
                         {new Date(selectedApplication.submissionDate).toLocaleDateString()}
                       </Typography>
                     </Grid>
@@ -1126,9 +1182,9 @@
                 <Paper sx={{ p: 3, mb: 3, border: '1px solid #DEE2E6' }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50', 
+                    color: '#0b87ac', 
                     mb: 2,
-                    borderBottom: '2px solid #3498DB',
+                    borderBottom: '2px solid #0b87ac',
                     pb: 1
                   }}>
                     Personal Information
@@ -1139,7 +1195,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         First Name:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.firstName}
                       </Typography>
                     </Grid>
@@ -1147,7 +1203,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Last Name:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.lastName}
                       </Typography>
                     </Grid>
@@ -1155,7 +1211,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Middle Name:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.middleName || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1163,7 +1219,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Birth Date:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {new Date(selectedApplication.birthDate).toLocaleDateString()}
                       </Typography>
                     </Grid>
@@ -1171,7 +1227,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Gender:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.gender}
                       </Typography>
                     </Grid>
@@ -1179,7 +1235,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Civil Status:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.civilStatus || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1190,7 +1246,7 @@
                 <Paper sx={{ p: 3, mb: 3, border: '1px solid #DEE2E6' }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50', 
+                    color: '#0b87ac', 
                     mb: 2,
                     borderBottom: '2px solid #E74C3C',
                     pb: 1
@@ -1203,7 +1259,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Disability Type:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.disabilityType}
                       </Typography>
                     </Grid>
@@ -1211,7 +1267,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Disability Cause:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.disabilityCause || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1219,7 +1275,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Disability Date:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.disabilityDate ? new Date(selectedApplication.disabilityDate).toLocaleDateString() : 'N/A'}
                       </Typography>
                     </Grid>
@@ -1230,7 +1286,7 @@
                 <Paper sx={{ p: 3, mb: 3, border: '1px solid #DEE2E6' }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50', 
+                    color: '#0b87ac', 
                     mb: 2,
                     borderBottom: '2px solid #27AE60',
                     pb: 1
@@ -1243,7 +1299,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Email Address:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.email}
                       </Typography>
                     </Grid>
@@ -1251,7 +1307,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Contact Number:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.contactNumber || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1259,7 +1315,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Emergency Contact:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.emergencyContact || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1267,7 +1323,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Emergency Phone:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.emergencyPhone || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1275,7 +1331,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Emergency Relationship:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.emergencyRelationship || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1286,7 +1342,7 @@
                 <Paper sx={{ p: 3, mb: 3, border: '1px solid #DEE2E6' }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50', 
+                    color: '#0b87ac', 
                     mb: 2,
                     borderBottom: '2px solid #F39C12',
                     pb: 1
@@ -1299,7 +1355,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Complete Address:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.address}
                       </Typography>
                     </Grid>
@@ -1307,7 +1363,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Barangay:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.barangay || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1315,7 +1371,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         City:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.city || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1323,7 +1379,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Postal Code:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.postalCode || 'N/A'}
                       </Typography>
                     </Grid>
@@ -1334,7 +1390,7 @@
                 <Paper sx={{ p: 3, mb: 3, border: '1px solid #DEE2E6' }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50', 
+                    color: '#0b87ac', 
                     mb: 2,
                     borderBottom: '2px solid #8E44AD',
                     pb: 1
@@ -1484,7 +1540,7 @@
                 <Paper sx={{ p: 3, border: '1px solid #DEE2E6' }}>
                   <Typography variant="h6" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50', 
+                    color: '#0b87ac', 
                     mb: 2,
                     borderBottom: '2px solid #9B59B6',
                     pb: 1
@@ -1512,7 +1568,7 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Remarks:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
                         {selectedApplication.remarks || 'No remarks provided'}
                       </Typography>
                     </Grid>
@@ -1523,9 +1579,10 @@
           </DialogContent>
           
           <DialogActions sx={{ 
-            p: 2, 
+            p: 3, 
             bgcolor: '#F8F9FA',
-            borderTop: '1px solid #DEE2E6'
+            borderTop: '1px solid #DEE2E6',
+            m: 1
           }}>
             <Button
               onClick={handleCloseDetails}
@@ -1544,7 +1601,7 @@
               variant="contained"
               startIcon={<PrintIcon />}
               sx={{
-                bgcolor: '#2C3E50',
+                bgcolor: '#0b87ac',
                 textTransform: 'none',
                 fontWeight: 600,
                 '&:hover': {
