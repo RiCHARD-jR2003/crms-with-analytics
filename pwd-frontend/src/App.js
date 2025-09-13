@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './components/Landing/LandingPage';
 import Login from './components/auth/login';
 import Register from './components/auth/Register';
+import PasswordReset from './components/auth/PasswordReset';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import BarangayPresidentDashboard from './components/dashboard/BarangayPresidentDashboard';
 // Temporarily commenting out components that might have React Native dependencies
@@ -110,6 +111,10 @@ function AppContent() {
       <Route 
         path="/register" 
         element={currentUser ? <Navigate to="/dashboard" /> : <Register />} 
+      />
+      <Route 
+        path="/password-reset" 
+        element={currentUser ? <Navigate to="/dashboard" /> : <PasswordReset />} 
       />
       <Route 
         path="/dashboard" 

@@ -39,6 +39,7 @@
   import AdminSidebar from '../shared/AdminSidebar';
   import { applicationService } from '../../services/applicationService';
   import pwdMemberService from '../../services/pwdMemberService';
+  import { api } from '../../services/api';
   import { useAuth } from '../../contexts/AuthContext';
   import { 
     mainContainerStyles, 
@@ -107,13 +108,35 @@
         setError(null);
         try {
           // Fetch applications pending admin approval using applicationService
-          const applicationsData = await applicationService.getByStatus('Pending Barangay Approval');
+          const applicationsData = await applicationService.getByStatus('Pending Admin Approval');
           setApplications(applicationsData);
+          
+          // Also fetch all applications to get complete data for PWD members
+          const allApplicationsResponse = await api.get('/applications');
+          const allApplications = allApplicationsResponse || [];
           
           // Fetch PWD members using pwdMemberService
           const pwdResponse = await pwdMemberService.getAll();
           const members = pwdResponse.data?.members || pwdResponse.members || [];
-          setPwdMembers(members);
+          
+          // Enhance PWD members with application data
+          const enhancedMembers = members.map(member => {
+            // Find the corresponding application by email
+            const correspondingApp = allApplications.find(app => 
+              app.email && member.email && app.email === member.email
+            );
+            
+            return {
+              ...member,
+              barangay: correspondingApp?.barangay || member.barangay,
+              disabilityType: member.disabilityType || correspondingApp?.disabilityType,
+              emergencyContact: member.emergencyContact || correspondingApp?.emergencyContact,
+              contactNumber: member.contactNumber || correspondingApp?.contactNumber,
+              email: member.email || correspondingApp?.email
+            };
+          });
+          
+          setPwdMembers(enhancedMembers);
         } catch (err) {
           console.error('Error fetching data:', err);
           setError('Failed to fetch data');
@@ -135,7 +158,7 @@
         });
 
         // Refresh the applications list
-        const data = await applicationService.getByStatus('Pending Barangay Approval');
+        const data = await applicationService.getByStatus('Pending Admin Approval');
         setApplications(data);
         alert('Application approved successfully! PWD Member created.');
       } catch (err) {
@@ -155,7 +178,7 @@
         });
 
         // Refresh the applications list
-        const data = await applicationService.getByStatus('Pending Barangay Approval');
+        const data = await applicationService.getByStatus('Pending Admin Approval');
         setApplications(data);
         alert('Application rejected successfully!');
       } catch (err) {
@@ -229,7 +252,7 @@
         age: getAgeFromBirthDate(member.birthDate),
         barangay: member.barangay || 'Not specified',
         disability: member.disabilityType || 'Not specified',
-        guardian: member.emergencyContact || 'Not provided', // Map to emergency contact from application
+        guardian: member.emergencyContact || 'Not provided',
         contact: member.contactNumber || 'Not provided',
         status: 'Active' // Default status since it's not in the API response
       }));
@@ -240,14 +263,9 @@
       // Use different data based on selected tab
       const dataToFilter = tab === 0 ? rows : applications;
       
-      console.log('Tab:', tab, 'Applications count:', applications.length, 'Data to filter:', dataToFilter);
-      console.log('Tab value type:', typeof tab, 'Tab === 1:', tab === 1);
-      console.log('Current filters:', filters);
-      
       // If no filters are active, return all data
       const hasAnyFilters = Object.values(filters).some(value => value !== '');
       if (!hasAnyFilters) {
-        console.log('No filters active, returning all data:', dataToFilter);
         return dataToFilter;
       }
       
@@ -264,7 +282,8 @@
         // Barangay filter
         const matchesBarangay = !filters.barangay || 
           (row.barangay && row.barangay === filters.barangay) ||
-          (row.address && row.address.toLowerCase().includes(filters.barangay.toLowerCase()));
+          (row.address && row.address.toLowerCase().includes(filters.barangay.toLowerCase())) ||
+          (row.barangay === 'Not specified' && filters.barangay === 'Not specified');
         
               // Disability filter - handle both masterlist and application data
         let matchesDisability = true;
@@ -312,13 +331,9 @@
           }
         }
 
-        const result = matchesSearch && matchesBarangay && matchesDisability && matchesAgeRange && matchesStatus;
-        console.log('Row:', row.firstName || row.name, 'matches:', { matchesSearch, matchesBarangay, matchesDisability, matchesStatus, matchesAgeRange, result });
-        
-        return result;
+        return matchesSearch && matchesBarangay && matchesDisability && matchesAgeRange && matchesStatus;
       });
       
-      console.log('Filtered rows:', filtered);
       return filtered;
     }, [rows, applications, filters, tab]);
 

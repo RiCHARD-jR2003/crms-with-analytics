@@ -612,29 +612,105 @@ class RouteServiceProvider extends ServiceProvider
                 }
             });
 
-            // Add route to reset PWD member password for testing
-            Route::get('/api/reset-pwd-password/{email}', function ($email) {
+            // Password reset routes for all user types
+            Route::post('/api/reset-password', function (\Illuminate\Http\Request $request) {
                 try {
-                    $user = \App\Models\User::where('email', $email)->first();
+                    $request->validate([
+                        'email' => 'required|email',
+                        'newPassword' => 'required|min:6',
+                        'confirmPassword' => 'required|same:newPassword'
+                    ]);
+                    
+                    $user = \App\Models\User::where('email', $request->email)->first();
                     if (!$user) {
                         return response()->json(['error' => 'User not found'], 404);
                     }
                     
-                    $newPassword = 'password123'; // Simple password for testing
+                    // Update password
                     $user->update([
-                        'password' => \Illuminate\Support\Facades\Hash::make($newPassword)
+                        'password' => \Illuminate\Support\Facades\Hash::make($request->newPassword)
                     ]);
                     
                     return response()->json([
                         'message' => 'Password reset successfully',
                         'email' => $user->email,
-                        'newPassword' => $newPassword,
                         'role' => $user->role
                     ]);
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    return response()->json(['error' => 'Validation failed', 'errors' => $e->errors()], 422);
                 } catch (\Exception $e) {
-                    return response()->json(['error' => $e->getMessage()], 500);
+                    return response()->json(['error' => 'Failed to reset password', 'message' => $e->getMessage()], 500);
                 }
             });
+
+            // Change password route (requires authentication)
+            Route::post('/api/change-password', function (\Illuminate\Http\Request $request) {
+                try {
+                    $request->validate([
+                        'currentPassword' => 'required',
+                        'newPassword' => 'required|min:6',
+                        'confirmPassword' => 'required|same:newPassword'
+                    ]);
+                    
+                    $user = auth()->user();
+                    if (!$user) {
+                        return response()->json(['error' => 'User not authenticated'], 401);
+                    }
+                    
+                    // Verify current password
+                    if (!\Illuminate\Support\Facades\Hash::check($request->currentPassword, $user->password)) {
+                        return response()->json(['error' => 'Current password is incorrect'], 400);
+                    }
+                    
+                    // Update password
+                    $user->update([
+                        'password' => \Illuminate\Support\Facades\Hash::make($request->newPassword)
+                    ]);
+                    
+                    return response()->json(['message' => 'Password changed successfully']);
+                    
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    return response()->json(['error' => 'Validation failed', 'errors' => $e->errors()], 422);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Failed to change password', 'message' => $e->getMessage()], 500);
+                }
+            })->middleware('auth:sanctum');
+
+            // Admin route to reset any user's password
+            Route::post('/api/admin/reset-user-password', function (\Illuminate\Http\Request $request) {
+                try {
+                    $request->validate([
+                        'email' => 'required|email',
+                        'newPassword' => 'required|min:6'
+                    ]);
+                    
+                    $admin = auth()->user();
+                    if (!$admin || $admin->role !== 'Admin') {
+                        return response()->json(['error' => 'Admin access required'], 403);
+                    }
+                    
+                    $user = \App\Models\User::where('email', $request->email)->first();
+                    if (!$user) {
+                        return response()->json(['error' => 'User not found'], 404);
+                    }
+                    
+                    // Update password
+                    $user->update([
+                        'password' => \Illuminate\Support\Facades\Hash::make($request->newPassword)
+                    ]);
+                    
+                    return response()->json([
+                        'message' => 'User password reset successfully',
+                        'email' => $user->email,
+                        'role' => $user->role
+                    ]);
+                    
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    return response()->json(['error' => 'Validation failed', 'errors' => $e->errors()], 422);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Failed to reset password', 'message' => $e->getMessage()], 500);
+                }
+            })->middleware('auth:sanctum');
 
             // Add test route to check PWD member accounts
             Route::get('/api/test-pwd-login/{email}', function ($email) {
@@ -667,6 +743,100 @@ class RouteServiceProvider extends ServiceProvider
                 }
             });
 
+            // Test route to approve application without authentication
+            Route::post('/api/test-approve-application/{id}', function (Request $request, $id) {
+                try {
+                    $application = \App\Models\Application::findOrFail($id);
+                    
+                    // Generate fixed password for testing
+                    $randomPassword = \Illuminate\Support\Str::random(12);
+                    
+                    // Check if user already exists
+                    $existingUser = \App\Models\User::where('email', $application->email)->first();
+                    
+                    if ($existingUser) {
+                        // User already exists, update their role to PWDMember and password
+                        $existingUser->update([
+                            'role' => 'PWDMember',
+                            'status' => 'active',
+                            'password' => \Illuminate\Support\Facades\Hash::make($randomPassword)
+                        ]);
+                        $pwdUser = $existingUser;
+                    } else {
+                        // Create new PWD Member User Account
+                        $pwdUser = \App\Models\User::create([
+                            'username' => $application->email, // Use email as username
+                            'email' => $application->email,
+                            'password' => \Illuminate\Support\Facades\Hash::make($randomPassword),
+                            'role' => 'PWDMember',
+                            'status' => 'active'
+                        ]);
+                    }
+
+                    // Generate unique PWD ID
+                    $pwdId = \App\Services\PWDIdGenerator::generate();
+                    
+                    // Create or update PWD Member Record
+                    $existingPwdMember = \App\Models\PWDMember::where('userID', $pwdUser->userID)->first();
+                    
+                    if ($existingPwdMember) {
+                        // Update existing PWD Member record
+                        $existingPwdMember->update([
+                            'pwd_id' => $pwdId,
+                            'pwd_id_generated_at' => now(),
+                            'firstName' => $application->firstName,
+                            'lastName' => $application->lastName,
+                            'birthDate' => $application->birthDate,
+                            'gender' => $application->gender,
+                            'disabilityType' => $application->disabilityType,
+                            'address' => $application->address,
+                            'contactNumber' => $application->contactNumber
+                        ]);
+                        $pwdMember = $existingPwdMember;
+                    } else {
+                        // Create new PWD Member Record
+                        $pwdMember = \App\Models\PWDMember::create([
+                            'userID' => $pwdUser->userID,
+                            'pwd_id' => $pwdId,
+                            'pwd_id_generated_at' => now(),
+                            'firstName' => $application->firstName,
+                            'lastName' => $application->lastName,
+                            'birthDate' => $application->birthDate,
+                            'gender' => $application->gender,
+                            'disabilityType' => $application->disabilityType,
+                            'address' => $application->address,
+                            'contactNumber' => $application->contactNumber
+                        ]);
+                    }
+
+                    // Update application status
+                    $application->update([
+                        'status' => 'Approved',
+                        'remarks' => 'Approved by Test Route',
+                        'pwdID' => $pwdUser->userID
+                    ]);
+
+                    return response()->json([
+                        'message' => 'Application approved successfully. PWD Member account created.',
+                        'application' => $application,
+                        'pwdUser' => [
+                            'userID' => $pwdUser->userID,
+                            'pwdId' => $pwdId,
+                            'email' => $pwdUser->email,
+                            'password' => $randomPassword
+                        ],
+                        'pwdMember' => $pwdMember
+                    ]);
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'error' => 'Failed to approve application',
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ], 500);
+                }
+            });
+
             // Add test route for debugging
             Route::get('/api/test-pwd-creation', function () {
                 try {
@@ -674,7 +844,7 @@ class RouteServiceProvider extends ServiceProvider
                     $user = \App\Models\User::create([
                         'username' => 'test@example.com',
                         'email' => 'test@example.com',
-                        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+                        'password' => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(12)),
                         'role' => 'PWDMember',
                         'status' => 'active'
                     ]);
@@ -728,7 +898,7 @@ class RouteServiceProvider extends ServiceProvider
                         ], 422);
                     }
 
-                    // Generate random password
+                    // Generate fixed password for testing
                     $randomPassword = \Illuminate\Support\Str::random(12);
                     
                     // Check if user already exists
@@ -805,19 +975,31 @@ class RouteServiceProvider extends ServiceProvider
                         'pwdID' => $pwdUser->userID
                     ]);
 
-                    // Send email notification
+                    // Send email notification using EmailService with Gmail API
                     try {
-                        \Illuminate\Support\Facades\Mail::send('emails.application-approved', [
+                        $emailService = new \App\Services\EmailService();
+                        $emailSent = $emailService->sendApplicationApprovalEmail([
                             'firstName' => $application->firstName,
                             'lastName' => $application->lastName,
                             'email' => $application->email,
                             'password' => $randomPassword,
                             'pwdId' => $pwdId,
-                            'loginUrl' => 'http://localhost:3000/login'
-                        ], function ($message) use ($application) {
-                            $message->to($application->email)
-                                   ->subject('PWD Application Approved - Account Created');
-                        });
+                            'loginUrl' => config('app.frontend_url', 'http://localhost:3000/login')
+                        ]);
+
+                        if ($emailSent) {
+                            \Illuminate\Support\Facades\Log::info('Application approval email sent successfully via Gmail API', [
+                                'email' => $application->email,
+                                'pwdId' => $pwdId,
+                                'from' => 'sarinonhoelivan29@gmail.com'
+                            ]);
+                        } else {
+                            \Illuminate\Support\Facades\Log::warning('Failed to send application approval email', [
+                                'email' => $application->email,
+                                'pwdId' => $pwdId,
+                                'from' => 'sarinonhoelivan29@gmail.com'
+                            ]);
+                        }
                     } catch (\Exception $mailError) {
                         // Log email error but don't fail the approval
                         \Illuminate\Support\Facades\Log::error('Email sending failed: ' . $mailError->getMessage());
@@ -888,6 +1070,425 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
+
+            // Simple test route
+            Route::get('/api/test-basic', function () {
+                return response()->json([
+                    'message' => 'Server is working!',
+                    'status' => 'OK',
+                    'time' => now()
+                ]);
+            });
+
+            // Get login credentials for a specific user
+            Route::get('/api/get-user-credentials/{email}', function ($email) {
+                try {
+                    $user = \App\Models\User::where('email', $email)->first();
+                    
+                    if (!$user) {
+                        return response()->json([
+                            'error' => 'User not found',
+                            'email' => $email
+                        ], 404);
+                    }
+
+                    return response()->json([
+                        'user_found' => true,
+                        'user_details' => [
+                            'userID' => $user->userID,
+                            'email' => $user->email,
+                            'role' => $user->role,
+                            'status' => $user->status,
+                            'created_at' => $user->created_at
+                        ],
+                        'note' => 'Password is hashed in database. Use the password from the approval email.'
+                    ]);
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'error' => 'Failed to get user credentials',
+                        'message' => $e->getMessage()
+                    ], 500);
+                }
+            });
+
+            // Reset password for testing
+            Route::get('/api/reset-password/{email}', function ($email) {
+                try {
+                    $user = \App\Models\User::where('email', $email)->first();
+                    
+                    if (!$user) {
+                        return response()->json([
+                            'error' => 'User not found',
+                            'email' => $email
+                        ], 404);
+                    }
+
+                    // Generate a simple password for testing
+                    $newPassword = 'password123';
+                    
+                    // Update user password
+                    $user->update([
+                        'password' => \Illuminate\Support\Facades\Hash::make($newPassword)
+                    ]);
+
+                    return response()->json([
+                        'message' => 'Password reset successfully',
+                        'user' => [
+                            'userID' => $user->userID,
+                            'email' => $user->email,
+                            'role' => $user->role,
+                            'status' => $user->status
+                        ],
+                        'new_password' => $newPassword,
+                        'login_instructions' => [
+                            'email' => $email,
+                            'password' => $newPassword,
+                            'redirect_to' => $user->role === 'PWDMember' ? '/pwd-dashboard' : '/admin-dashboard'
+                        ]
+                    ]);
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'error' => 'Failed to reset password',
+                        'message' => $e->getMessage()
+                    ], 500);
+                }
+            });
+
+            // Test route to create PwdMember record for existing user
+            Route::get('/api/create-pwd-member/{email}', function ($email) {
+                try {
+                    $user = \App\Models\User::where('email', $email)->first();
+                    if (!$user) {
+                        return response()->json(['error' => 'User not found'], 404);
+                    }
+                    
+                    // Check if PwdMember already exists
+                    $existingPwdMember = \App\Models\PWDMember::where('userID', $user->userID)->first();
+                    if ($existingPwdMember) {
+                        return response()->json([
+                            'message' => 'PwdMember already exists',
+                            'pwd_member_id' => $existingPwdMember->id,
+                            'pwd_id' => $existingPwdMember->pwd_id
+                        ]);
+                    }
+                    
+                    // Create PwdMember record
+                    $pwdId = 'PWD-' . str_pad($user->userID, 6, '0', STR_PAD_LEFT);
+                    $pwdMember = \App\Models\PWDMember::create([
+                        'userID' => $user->userID,
+                        'pwd_id' => $pwdId,
+                        'pwd_id_generated_at' => now(),
+                        'firstName' => 'Nhoel Ivan',
+                        'lastName' => 'Sarino',
+                        'birthDate' => '1995-01-01',
+                        'gender' => 'Male',
+                        'disabilityType' => 'visual',
+                        'address' => 'Test Address',
+                        'contactNumber' => '09917404331'
+                    ]);
+                    
+                    return response()->json([
+                        'message' => 'PwdMember created successfully',
+                        'pwd_member_id' => $pwdMember->id,
+                        'pwd_id' => $pwdMember->pwd_id,
+                        'user_id' => $user->userID
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => $e->getMessage()], 500);
+                }
+            });
+
+            // Test route to fix Richard Carandang's birth date
+            Route::get('/api/fix-richard-birthdate', function () {
+                try {
+                    $richard = \App\Models\PWDMember::where('firstName', 'Richard')->where('lastName', 'Carandang')->first();
+                    
+                    if (!$richard) {
+                        return response()->json(['error' => 'Richard Carandang not found'], 404);
+                    }
+                    
+                    // Fix the birth date to a realistic past date (February 8, 1990)
+                    $richard->update([
+                        'birthDate' => '1990-02-08'
+                    ]);
+                    
+                    return response()->json([
+                        'message' => 'Richard Carandang birth date fixed successfully',
+                        'old_birth_date' => '2025-02-08',
+                        'new_birth_date' => '1990-02-08',
+                        'new_age' => 35,
+                        'quarter' => 1
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => $e->getMessage()], 500);
+                }
+            });
+
+            // Test route to call BenefitController directly
+            Route::get('/api/test-benefit-controller', function () {
+                try {
+                    $controller = new \App\Http\Controllers\API\BenefitController();
+                    $response = $controller->index();
+                    return $response;
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ], 500);
+                }
+            });
+
+            // Test route to debug Benefit model
+            Route::get('/api/test-benefit-model', function () {
+                try {
+                    $benefits = \App\Models\Benefit::all();
+                    return response()->json([
+                        'success' => true,
+                        'count' => count($benefits),
+                        'benefits' => $benefits
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ], 500);
+                }
+            });
+
+            // Test route to check benefits table structure
+            Route::get('/api/check-benefits-table', function () {
+                try {
+                    $benefits = \App\Models\Benefit::all();
+                    
+                    return response()->json([
+                        'total_benefits' => count($benefits),
+                        'benefits' => $benefits,
+                        'table_structure' => [
+                            'primary_key' => 'benefitID',
+                            'fillable_fields' => ['benefitType', 'description', 'schedule'],
+                            'relationships' => ['benefitClaims']
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => $e->getMessage()], 500);
+                }
+            });
+
+            // Test route to check all PWD members and their birth dates
+            Route::get('/api/check-pwd-birthdays', function () {
+                try {
+                    $pwdMembers = \App\Models\PWDMember::all();
+                    
+                    $membersWithBirthdays = [];
+                    foreach ($pwdMembers as $member) {
+                        $birthDate = $member->birthDate;
+                        $month = $birthDate ? $birthDate->format('n') : null; // 1-12
+                        $quarter = $month ? ceil($month / 3) : null; // 1-4
+                        
+                        $membersWithBirthdays[] = [
+                            'id' => $member->id,
+                            'userID' => $member->userID,
+                            'pwd_id' => $member->pwd_id,
+                            'firstName' => $member->firstName,
+                            'lastName' => $member->lastName,
+                            'birthDate' => $birthDate ? $birthDate->format('Y-m-d') : null,
+                            'birthMonth' => $month,
+                            'quarter' => $quarter,
+                            'age' => $birthDate ? $birthDate->age : null
+                        ];
+                    }
+                    
+                    return response()->json([
+                        'total_members' => count($membersWithBirthdays),
+                        'members' => $membersWithBirthdays,
+                        'quarter_summary' => [
+                            'Q1 (Jan-Mar)' => count(array_filter($membersWithBirthdays, fn($m) => $m['quarter'] == 1)),
+                            'Q2 (Apr-Jun)' => count(array_filter($membersWithBirthdays, fn($m) => $m['quarter'] == 2)),
+                            'Q3 (Jul-Sep)' => count(array_filter($membersWithBirthdays, fn($m) => $m['quarter'] == 3)),
+                            'Q4 (Oct-Dec)' => count(array_filter($membersWithBirthdays, fn($m) => $m['quarter'] == 4)),
+                            'No Birth Date' => count(array_filter($membersWithBirthdays, fn($m) => $m['birthDate'] === null))
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => $e->getMessage()], 500);
+                }
+            });
+
+            Route::post('/api/test-login', function (Request $request) {
+                try {
+                    $credentials = $request->only(['email', 'password']);
+                    
+                    if (\Illuminate\Support\Facades\Auth::attempt($credentials)) {
+                        $user = \Illuminate\Support\Facades\Auth::user();
+                        
+                        return response()->json([
+                            'login_successful' => true,
+                            'user' => [
+                                'userID' => $user->userID,
+                                'email' => $user->email,
+                                'role' => $user->role,
+                                'status' => $user->status
+                            ],
+                            'redirect_to' => $user->role === 'PWDMember' ? '/pwd-dashboard' : '/admin-dashboard'
+                        ]);
+                    } else {
+                        return response()->json([
+                            'login_successful' => false,
+                            'error' => 'Invalid credentials'
+                        ], 401);
+                    }
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'error' => 'Login failed',
+                        'message' => $e->getMessage()
+                    ], 500);
+                }
+            });
+            Route::get('/api/test-admin-approve/{applicationId}', function ($applicationId) {
+                try {
+                    $application = \App\Models\Application::findOrFail($applicationId);
+                    
+                    // Generate secure random password
+                    $randomPassword = \Illuminate\Support\Str::random(12);
+                    
+                    // Check if user already exists
+                    $existingUser = \App\Models\User::where('email', $application->email)->first();
+                    
+                    if ($existingUser) {
+                        // User already exists, update their role to PWDMember and password
+                        $existingUser->update([
+                            'role' => 'PWDMember',
+                            'status' => 'active',
+                            'password' => \Illuminate\Support\Facades\Hash::make($randomPassword)
+                        ]);
+                        $pwdUser = $existingUser;
+                    } else {
+                        // Create new PWD Member User Account
+                        $pwdUser = \App\Models\User::create([
+                            'username' => $application->email, // Use email as username
+                            'email' => $application->email,
+                            'password' => \Illuminate\Support\Facades\Hash::make($randomPassword),
+                            'role' => 'PWDMember',
+                            'status' => 'active'
+                        ]);
+                    }
+
+                    // Generate unique PWD ID
+                    $pwdId = 'PWD-' . str_pad($pwdUser->userID, 6, '0', STR_PAD_LEFT);
+
+                    // Create PWD Member record
+                    \App\Models\PWDMember::create([
+                        'userID' => $pwdUser->userID,
+                        'pwd_id' => $pwdId,
+                        'pwd_id_generated_at' => now(),
+                        'firstName' => $application->firstName,
+                        'lastName' => $application->lastName,
+                        'birthDate' => $application->birthDate,
+                        'gender' => $application->gender,
+                        'disabilityType' => $application->disabilityType,
+                        'address' => $application->address,
+                        'contactNumber' => $application->contactNumber
+                    ]);
+
+                    // Update application status
+                    $application->update([
+                        'status' => 'Approved',
+                        'remarks' => 'Test approval - Account created',
+                        'pwdID' => $pwdUser->userID
+                    ]);
+
+                    // Send email notification using SMTP
+                    try {
+                        \Illuminate\Support\Facades\Mail::send('emails.application-approved', [
+                            'firstName' => $application->firstName,
+                            'lastName' => $application->lastName,
+                            'email' => $application->email,
+                            'password' => $randomPassword,
+                            'pwdId' => $pwdId,
+                            'loginUrl' => 'http://localhost:3000/login'
+                        ], function ($message) use ($application) {
+                            $message->to($application->email)
+                                   ->subject('PWD Application Approved - Welcome!')
+                                   ->from('sarinonhoelivan29@gmail.com', 'Cabuyao PDAO RMS');
+                        });
+
+                        $emailSent = true;
+                    } catch (\Exception $mailError) {
+                        $emailSent = false;
+                        \Illuminate\Support\Facades\Log::error('Email sending failed: ' . $mailError->getMessage());
+                    }
+
+                    return response()->json([
+                        'message' => '✅ ADMIN APPROVAL SUCCESSFUL!',
+                        'details' => [
+                            'application_approved' => true,
+                            'user_account_created' => true,
+                            'email_sent' => $emailSent
+                        ],
+                        'application' => [
+                            'id' => $application->applicationID,
+                            'name' => $application->firstName . ' ' . $application->lastName,
+                            'email' => $application->email,
+                            'status' => $application->status
+                        ],
+                        'user_account' => [
+                            'userID' => $pwdUser->userID,
+                            'email' => $pwdUser->email,
+                            'role' => $pwdUser->role,
+                            'status' => $pwdUser->status,
+                            'pwdId' => $pwdId
+                        ],
+                        'login_credentials' => [
+                            'email' => $application->email,
+                            'password' => $randomPassword,
+                            'note' => 'Password is hashed in database for security'
+                        ],
+                        'email_status' => $emailSent ? 'Email sent successfully' : 'Email failed to send'
+                    ]);
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'error' => 'Failed to approve application',
+                        'message' => $e->getMessage()
+                    ], 500);
+                }
+            });
+            Route::get('/api/test-smtp/{email}', function ($email) {
+                try {
+                    // Use Laravel's Mail facade directly (SMTP only)
+                    \Illuminate\Support\Facades\Mail::send('emails.application-approved', [
+                        'firstName' => 'Test',
+                        'lastName' => 'User',
+                        'email' => $email,
+                        'password' => 'test123',
+                        'pwdId' => 'PWD-000001',
+                        'loginUrl' => 'http://localhost:3000/login'
+                    ], function ($message) use ($email) {
+                        $message->to($email)
+                               ->subject('PWD Application Approved - Test')
+                               ->from('sarinonhoelivan29@gmail.com', 'Cabuyao PDAO RMS');
+                    });
+
+                    return response()->json([
+                        'message' => 'SMTP email sent successfully!',
+                        'email' => $email,
+                        'from' => 'sarinonhoelivan29@gmail.com',
+                        'method' => 'SMTP'
+                    ]);
+
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'error' => 'SMTP email failed',
+                        'message' => $e->getMessage(),
+                        'email' => $email
+                    ], 500);
+                }
+            });
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));

@@ -42,8 +42,11 @@ import {
   PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import pwdMemberService from '../../services/pwdMemberService';
+import benefitService from '../../services/benefitService';
 import AdminSidebar from '../shared/AdminSidebar';
 import SimpleQRScanner from '../qr/SimpleQRScanner';
+import QRCodeDisplay from '../qr/QRCodeDisplay';
+import PWDIDCard from '../cards/PWDIDCard';
 
 const BenefitTracking = () => {
   const [pwdMembers, setPwdMembers] = useState([]);
@@ -56,6 +59,9 @@ const BenefitTracking = () => {
   const [selectedBenefit, setSelectedBenefit] = useState(null);
   const [eligibleBeneficiaries, setEligibleBeneficiaries] = useState([]);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [qrCodeDisplayOpen, setQrCodeDisplayOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [pwdIdCardOpen, setPwdIdCardOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Filter states
@@ -84,54 +90,76 @@ const BenefitTracking = () => {
     }
   };
 
-  // Load birthday cash gift and financial assistance benefits from localStorage (from Ayuda page)
-  const loadBirthdayBenefits = () => {
+  // Load birthday cash gift and financial assistance benefits from database
+  const loadBirthdayBenefits = async () => {
     try {
-      const savedBenefits = localStorage.getItem('benefits');
-      console.log('Raw saved benefits from localStorage:', savedBenefits);
+      setLoading(true);
+      const benefits = await benefitService.getAll();
       
-      if (savedBenefits && savedBenefits !== 'null' && savedBenefits !== 'undefined') {
-        const benefits = JSON.parse(savedBenefits);
-        console.log('Parsed benefits:', benefits);
+      if (Array.isArray(benefits)) {
+        // Handle migration from old "Financial" type to "Financial Assistance"
+        const migratedBenefits = benefits.map(benefit => {
+          if (benefit.type === 'Financial') {
+            return { ...benefit, type: 'Financial Assistance' };
+          }
+          return benefit;
+        });
         
-        if (Array.isArray(benefits)) {
-          // Handle migration from old "Financial" type to "Financial Assistance"
-          const migratedBenefits = benefits.map(benefit => {
-            if (benefit.type === 'Financial') {
-              return { ...benefit, type: 'Financial Assistance' };
-            }
-            return benefit;
-          });
-          
-          const birthdayBenefits = migratedBenefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
-          const financialBenefits = migratedBenefits.filter(benefit => benefit.type === 'Financial Assistance');
-          console.log('Filtered birthday benefits:', birthdayBenefits);
-          console.log('Filtered financial benefits:', financialBenefits);
-          setBirthdayBenefits(birthdayBenefits);
-          setFinancialBenefits(financialBenefits);
-          
-          // Save migrated benefits back to localStorage
-          localStorage.setItem('benefits', JSON.stringify(migratedBenefits));
-        } else {
-          console.log('Benefits is not an array:', benefits);
-          setBirthdayBenefits([]);
-          setFinancialBenefits([]);
-        }
+        const birthdayBenefits = migratedBenefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+        const financialBenefits = migratedBenefits.filter(benefit => benefit.type === 'Financial Assistance');
+        setBirthdayBenefits(birthdayBenefits);
+        setFinancialBenefits(financialBenefits);
+        
+        // Also save to localStorage for backward compatibility
+        localStorage.setItem('benefits', JSON.stringify(migratedBenefits));
       } else {
-        console.log('No saved benefits found or invalid data');
         setBirthdayBenefits([]);
         setFinancialBenefits([]);
       }
     } catch (error) {
-      console.error('Error loading benefits:', error);
-      setBirthdayBenefits([]);
-      setFinancialBenefits([]);
+      console.error('Error loading benefits from database:', error);
+      // Fallback to localStorage if database fails
+      try {
+        const savedBenefits = localStorage.getItem('benefits');
+        if (savedBenefits && savedBenefits !== 'null' && savedBenefits !== 'undefined') {
+          const benefits = JSON.parse(savedBenefits);
+          if (Array.isArray(benefits)) {
+            const birthdayBenefits = benefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+            const financialBenefits = benefits.filter(benefit => benefit.type === 'Financial Assistance');
+            setBirthdayBenefits(birthdayBenefits);
+            setFinancialBenefits(financialBenefits);
+          }
+        }
+      } catch (localError) {
+        console.error('Error loading benefits from localStorage:', localError);
+        setBirthdayBenefits([]);
+        setFinancialBenefits([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch benefit claims from database
+  const fetchBenefitClaims = async (benefitId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/benefit-claims/${benefitId}`);
+      if (response.ok) {
+        const claims = await response.json();
+        return claims;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching benefit claims:', error);
+      return [];
     }
   };
 
   // Get eligible beneficiaries for a specific benefit
-  const getEligibleBeneficiaries = (benefit) => {
+  const getEligibleBeneficiaries = async (benefit) => {
     if (!benefit) return [];
+    
+    let eligibleMembers = [];
     
     // For Birthday Cash Gift benefits, filter by birthday month/quarter
     if (benefit.type === 'Birthday Cash Gift' && benefit.birthdayMonth) {
@@ -144,19 +172,14 @@ const BenefitTracking = () => {
       
       const eligibleMonths = quarterMonths[benefit.birthdayMonth] || [];
       
-      return pwdMembers.filter(member => {
+      eligibleMembers = pwdMembers.filter(member => {
         if (!member.birthDate) return false;
         const birthMonth = new Date(member.birthDate).getMonth() + 1;
         return eligibleMonths.includes(birthMonth);
-      }).map(member => ({
-        ...member,
-        claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
-        claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
-      }));
+      });
     }
-    
     // For Financial Assistance benefits, filter by month if specified
-    if (benefit.type === 'Financial Assistance' && benefit.quarter) {
+    else if (benefit.type === 'Financial Assistance' && benefit.quarter) {
       const monthMap = {
         'January': 1, 'February': 2, 'March': 3, 'April': 4,
         'May': 5, 'June': 6, 'July': 7, 'August': 8,
@@ -165,29 +188,35 @@ const BenefitTracking = () => {
       
       const targetMonth = monthMap[benefit.quarter];
       
-      return pwdMembers.filter(member => {
+      eligibleMembers = pwdMembers.filter(member => {
         if (!member.birthDate) return false;
         const birthMonth = new Date(member.birthDate).getMonth() + 1;
         return birthMonth === targetMonth;
-      }).map(member => ({
-        ...member,
-        claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
-        claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
-      }));
+      });
+    }
+    // For other benefit types or if no specific filtering, return all members
+    else {
+      eligibleMembers = pwdMembers;
     }
     
-    // For other benefit types or if no specific filtering, return all members
-    return pwdMembers.map(member => ({
-      ...member,
-      claimStatus: Math.random() > 0.5 ? 'claimed' : 'unclaimed', // Mock claim status
-      claimDate: Math.random() > 0.5 ? new Date().toISOString() : null
-    }));
+    // Fetch real claim data from database
+    const claims = await fetchBenefitClaims(benefit.id);
+    
+    // Map members with their actual claim status
+    return eligibleMembers.map(member => {
+      const memberClaim = claims.find(claim => claim.pwdID === member.userID);
+      return {
+        ...member,
+        claimStatus: memberClaim ? 'claimed' : 'unclaimed',
+        claimDate: memberClaim ? memberClaim.claimDate : null
+      };
+    });
   };
 
   // Handle benefit selection
-  const handleBenefitSelect = (benefit) => {
+  const handleBenefitSelect = async (benefit) => {
     setSelectedBenefit(benefit);
-    const beneficiaries = getEligibleBeneficiaries(benefit);
+    const beneficiaries = await getEligibleBeneficiaries(benefit);
     setEligibleBeneficiaries(beneficiaries);
   };
 
@@ -226,9 +255,34 @@ const BenefitTracking = () => {
     setQrScannerOpen(false);
   };
 
+  // Handle QR code display
+  const handleShowQRCode = (member) => {
+    setSelectedMember(member);
+    setQrCodeDisplayOpen(true);
+  };
+
+  const handleCloseQRCodeDisplay = () => {
+    setQrCodeDisplayOpen(false);
+    setSelectedMember(null);
+  };
+
+  const handleOpenScannerFromQR = (member) => {
+    setQrCodeDisplayOpen(false);
+    setQrScannerOpen(true);
+  };
+
+  // Handle PWD ID Card
+  const handleShowPWDIDCard = (member) => {
+    setSelectedMember(member);
+    setPwdIdCardOpen(true);
+  };
+
+  const handleClosePWDIDCard = () => {
+    setPwdIdCardOpen(false);
+    setSelectedMember(null);
+  };
+
   const handleQRScan = (result) => {
-    console.log('QR Scan result:', result);
-    
     if (result && result.member && result.benefit) {
       // Update eligible beneficiaries list if we have a selected benefit
       if (selectedBenefit && selectedBenefit.id === result.benefit.id) {
@@ -249,18 +303,23 @@ const BenefitTracking = () => {
       loadBirthdayBenefits();
       
       // Show success message
-      alert(`Benefit "${result.benefit.name}" ${result.status} for ${result.member.firstName} ${result.member.lastName}!`);
+      alert(`Benefit "${result.benefit.title || result.benefit.name}" ${result.status} for ${result.member.firstName} ${result.member.lastName}!`);
     }
   };
 
   useEffect(() => {
-    fetchPwdMembers();
-    loadBirthdayBenefits();
+    const initializeData = async () => {
+      await fetchPwdMembers();
+      await loadBirthdayBenefits();
+    };
+    initializeData();
   }, []);
 
   // Reload birthday benefits when PWD members change
   useEffect(() => {
-    loadBirthdayBenefits();
+    if (pwdMembers.length > 0) {
+      loadBirthdayBenefits();
+    }
   }, [pwdMembers]);
 
   // Apply filters
@@ -1523,25 +1582,6 @@ const BenefitTracking = () => {
                 >
                   Refresh Benefits
                 </Button>
-                <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mt: 2 }}>
-                  Debug: Check browser console for localStorage data
-                </Typography>
-                <Box sx={{ mt: 2, p: 2, bgcolor: '#F8F9FA', borderRadius: 2, textAlign: 'left' }}>
-                  <Typography variant="caption" sx={{ color: '#2C3E50', fontWeight: 600, display: 'block', mb: 1 }}>
-                    Debug Information:
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
-                    Total benefits in localStorage: {localStorage.getItem('benefits') ? JSON.parse(localStorage.getItem('benefits')).length : 0}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
-                    Birthday benefits found: {birthdayBenefits.length}
-                  </Typography>
-                  {localStorage.getItem('benefits') && (
-                    <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem', mt: 1 }}>
-                      Raw data: {localStorage.getItem('benefits').substring(0, 100)}...
-                    </Typography>
-                  )}
-                </Box>
               </Paper>
             ) : (
               <>
@@ -1616,7 +1656,7 @@ const BenefitTracking = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <CakeIcon sx={{ color: '#2C3E50', mr: 1 }} />
                               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
-                                {benefit.name}
+                                {benefit.title || benefit.name}
                               </Typography>
                             </Box>
                             <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
@@ -1657,7 +1697,7 @@ const BenefitTracking = () => {
                       color: '#2C3E50' 
                     }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                        Eligible Beneficiaries for {selectedBenefit.name}
+                        Eligible Beneficiaries for {selectedBenefit.title || selectedBenefit.name}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         {getQuarterName(selectedBenefit.birthdayMonth)} • {eligibleBeneficiaries.length} eligible members
@@ -1942,25 +1982,6 @@ const BenefitTracking = () => {
                 >
                   Refresh Benefits
                 </Button>
-                <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mt: 2 }}>
-                  Debug: Check browser console for localStorage data
-                </Typography>
-                <Box sx={{ mt: 2, p: 2, bgcolor: '#F8F9FA', borderRadius: 2, textAlign: 'left' }}>
-                  <Typography variant="caption" sx={{ color: '#2C3E50', fontWeight: 600, display: 'block', mb: 1 }}>
-                    Debug Information:
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
-                    Total benefits in localStorage: {localStorage.getItem('benefits') ? JSON.parse(localStorage.getItem('benefits')).length : 0}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem' }}>
-                    Financial assistance benefits found: {financialBenefits.length}
-                  </Typography>
-                  {localStorage.getItem('benefits') && (
-                    <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', fontSize: '0.7rem', mt: 1 }}>
-                      Raw data: {localStorage.getItem('benefits').substring(0, 100)}...
-                    </Typography>
-                  )}
-                </Box>
               </Paper>
             ) : (
               <>
@@ -2035,7 +2056,7 @@ const BenefitTracking = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <CakeIcon sx={{ color: '#2C3E50', mr: 1 }} />
                               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
-                                {benefit.name}
+                                {benefit.title || benefit.name}
                               </Typography>
                             </Box>
                             <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
@@ -2076,7 +2097,7 @@ const BenefitTracking = () => {
                       color: '#2C3E50' 
                     }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                        Eligible Beneficiaries for {selectedBenefit.name}
+                        Eligible Beneficiaries for {selectedBenefit.title || selectedBenefit.name}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         {getQuarterName(selectedBenefit.birthdayMonth)} • {eligibleBeneficiaries.length} eligible members
@@ -2202,6 +2223,21 @@ const BenefitTracking = () => {
         open={qrScannerOpen}
         onClose={handleCloseQRScanner}
         onScan={handleQRScan}
+      />
+
+      {/* QR Code Display Dialog */}
+      <QRCodeDisplay
+        open={qrCodeDisplayOpen}
+        onClose={handleCloseQRCodeDisplay}
+        member={selectedMember}
+        onScan={handleOpenScannerFromQR}
+      />
+
+      {/* PWD ID Card Dialog */}
+      <PWDIDCard
+        open={pwdIdCardOpen}
+        onClose={handleClosePWDIDCard}
+        member={selectedMember}
       />
     </Box>
   );

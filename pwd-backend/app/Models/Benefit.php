@@ -10,21 +10,43 @@ class Benefit extends Model
     use HasFactory;
 
     protected $table = 'benefit';
-    protected $primaryKey = 'benefitID';
+    protected $primaryKey = 'id';
     
     protected $fillable = [
         'benefitType',
         'description',
-        'schedule'
+        'schedule',
+        'title',
+        'type',
+        'amount',
+        'targetRecipients',
+        'distributionDate',
+        'expiryDate',
+        'barangay',
+        'quarter',
+        'birthdayMonth',
+        'status',
+        'distributed',
+        'pending',
+        'color',
+        'submittedDate',
+        'approvalFile',
+        'approvedDate'
     ];
 
     protected $casts = [
-        'schedule' => 'date'
+        'schedule' => 'date',
+        'distributionDate' => 'date',
+        'expiryDate' => 'date',
+        'submittedDate' => 'datetime',
+        'approvedDate' => 'datetime',
+        'distributed' => 'integer',
+        'pending' => 'integer'
     ];
 
     // Relationships
     public function benefitClaims()
     {
-        return $this->hasMany(BenefitClaim::class, 'benefitID', 'benefitID');
+        return $this->hasMany(BenefitClaim::class, 'benefitID', 'id');
     }
 }

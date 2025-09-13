@@ -340,6 +340,7 @@ function Login() {
                   <Box sx={{ textAlign: 'right', mb: 3 }}>
                     <Button
                       variant="text"
+                      onClick={() => navigate('/password-reset')}
                       sx={{ color: 'white', fontSize: '12px' }}
                     >
                       Forgot Password

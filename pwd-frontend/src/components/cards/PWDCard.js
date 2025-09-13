@@ -230,11 +230,11 @@ function PWDCard() {
         setPwdMembers(mockMembers);
         setSelectedMember(mockMembers[0].id);
       } else {
-      setPwdMembers(transformedMembers);
-      
-      // Set first member as selected if none selected
-      if (!selectedMember && transformedMembers.length > 0) {
-        setSelectedMember(transformedMembers[0].id);
+        setPwdMembers(transformedMembers);
+        
+        // Set first member as selected if none selected
+        if (!selectedMember && transformedMembers.length > 0) {
+          setSelectedMember(transformedMembers[0].id);
         }
       }
     } catch (err) {

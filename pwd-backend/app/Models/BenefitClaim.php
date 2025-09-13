@@ -10,7 +10,7 @@ class BenefitClaim extends Model
     use HasFactory;
 
     protected $table = 'benefit_claim';
-    protected $primaryKey = 'claimID';
+    protected $primaryKey = 'id';
     
     protected $fillable = [
         'pwdID',
@@ -32,6 +32,6 @@ class BenefitClaim extends Model
 
     public function benefit()
     {
-        return $this->belongsTo(Benefit::class, 'benefitID', 'benefitID');
+        return $this->belongsTo(Benefit::class, 'benefitID', 'id');
     }
 }

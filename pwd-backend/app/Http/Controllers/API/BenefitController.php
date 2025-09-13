@@ -12,16 +12,33 @@ class BenefitController extends Controller
 {
     public function index()
     {
-        $benefits = Benefit::with('benefitClaims.pwdMember.user')->get();
+        $benefits = Benefit::all();
         return response()->json($benefits);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'benefitType' => 'required|string|max:50',
+            'title' => 'required|string|max:255',
+            'type' => 'required|string|max:50',
+            'amount' => 'required|string|max:50',
             'description' => 'required|string',
-            'schedule' => 'required|date',
+            'barangay' => 'nullable|string|max:100',
+            'quarter' => 'nullable|string|max:50',
+            'birthdayMonth' => 'nullable|string|max:10',
+            'status' => 'nullable|string|max:50',
+            'distributionDate' => 'nullable|date',
+            'expiryDate' => 'nullable|date',
+            'targetRecipients' => 'nullable|string',
+            'distributed' => 'nullable|integer',
+            'pending' => 'nullable|integer',
+            'color' => 'nullable|string|max:20',
+            'submittedDate' => 'nullable|date',
+            'approvalFile' => 'nullable|string',
+            'approvedDate' => 'nullable|date',
+            // Legacy fields for backward compatibility
+            'benefitType' => 'nullable|string|max:50',
+            'schedule' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -35,7 +52,7 @@ class BenefitController extends Controller
 
     public function show($id)
     {
-        $benefit = Benefit::with('benefitClaims.pwdMember.user')->find($id);
+        $benefit = Benefit::find($id);
         
         if (!$benefit) {
             return response()->json(['message' => 'Benefit not found'], 404);
@@ -53,9 +70,26 @@ class BenefitController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'benefitType' => 'sometimes|required|string|max:50',
+            'title' => 'sometimes|required|string|max:255',
+            'type' => 'sometimes|required|string|max:50',
+            'amount' => 'sometimes|required|string|max:50',
             'description' => 'sometimes|required|string',
-            'schedule' => 'sometimes|required|date',
+            'barangay' => 'nullable|string|max:100',
+            'quarter' => 'nullable|string|max:50',
+            'birthdayMonth' => 'nullable|string|max:10',
+            'status' => 'nullable|string|max:50',
+            'distributionDate' => 'nullable|date',
+            'expiryDate' => 'nullable|date',
+            'targetRecipients' => 'nullable|string',
+            'distributed' => 'nullable|integer',
+            'pending' => 'nullable|integer',
+            'color' => 'nullable|string|max:20',
+            'submittedDate' => 'nullable|date',
+            'approvalFile' => 'nullable|string',
+            'approvedDate' => 'nullable|date',
+            // Legacy fields for backward compatibility
+            'benefitType' => 'nullable|string|max:50',
+            'schedule' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {

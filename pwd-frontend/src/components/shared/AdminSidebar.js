@@ -16,12 +16,16 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supportService } from '../../services/supportService';
+import ChangePassword from '../auth/ChangePassword';
+import AdminPasswordReset from '../admin/AdminPasswordReset';
 
 function AdminSidebar({ isOpen, onToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
   const [supportNotifications, setSupportNotifications] = useState(0);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [adminPasswordResetOpen, setAdminPasswordResetOpen] = useState(false);
 
   useEffect(() => {
     const fetchSupportNotifications = async () => {
@@ -231,6 +235,58 @@ function AdminSidebar({ isOpen, onToggle }) {
         />
       </Box>
 
+      {/* Password Management */}
+      <Box sx={{ 
+        p: 2,
+        opacity: { xs: isOpen ? 1 : 0, md: 1 },
+        transition: 'opacity 0.3s ease-in-out'
+      }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<PersonIcon />}
+          onClick={() => setChangePasswordOpen(true)}
+          sx={{
+            color: '#566573',
+            borderColor: '#D5DBDB',
+            textTransform: 'none',
+            fontWeight: 600,
+            py: 1.2,
+            borderRadius: 2,
+            mb: 1,
+            '&:hover': {
+              borderColor: '#3498DB',
+              background: '#F4F7FC',
+              color: '#3498DB'
+            }
+          }}
+        >
+          Change Password
+        </Button>
+        
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<SupportAgentIcon />}
+          onClick={() => setAdminPasswordResetOpen(true)}
+          sx={{
+            color: '#566573',
+            borderColor: '#D5DBDB',
+            textTransform: 'none',
+            fontWeight: 600,
+            py: 1.2,
+            borderRadius: 2,
+            '&:hover': {
+              borderColor: '#E74C3C',
+              background: '#F4F7FC',
+              color: '#E74C3C'
+            }
+          }}
+        >
+          Reset User Password
+        </Button>
+      </Box>
+
       {/* Logout Button */}
       <Box sx={{ 
         p: 3,
@@ -259,6 +315,16 @@ function AdminSidebar({ isOpen, onToggle }) {
           Log Out
         </Button>
       </Box>
+
+      {/* Password Management Dialogs */}
+      <ChangePassword 
+        open={changePasswordOpen} 
+        onClose={() => setChangePasswordOpen(false)} 
+      />
+      <AdminPasswordReset 
+        open={adminPasswordResetOpen} 
+        onClose={() => setAdminPasswordResetOpen(false)} 
+      />
     </Box>
   );
 }

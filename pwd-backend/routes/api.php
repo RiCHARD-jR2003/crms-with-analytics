@@ -13,6 +13,7 @@ use App\Http\Controllers\API\ReportController;
 use App\Http\Controllers\API\AuditLogController;
 use App\Http\Controllers\API\SupportTicketController;
 use App\Http\Controllers\API\DashboardController;
+use App\Http\Controllers\API\GmailController;
 
 // Test route
 Route::get('/test', function () {
@@ -23,6 +24,277 @@ Route::get('/test', function () {
         'client_ip' => request()->ip(),
         'user_agent' => request()->userAgent()
     ]);
+});
+
+// Database and email test route
+Route::get('/test-database-email', function () {
+    try {
+        // Test database connection
+        $dbTest = 'Database: ';
+        try {
+            $appCount = \App\Models\Application::count();
+            $dbTest .= "SUCCESS - Applications count: {$appCount}";
+        } catch (\Exception $e) {
+            $dbTest .= "ERROR - " . $e->getMessage();
+        }
+
+        // Test email service
+        $emailTest = 'Email: ';
+        try {
+            $emailService = new \App\Services\EmailService();
+            $gmailService = $emailService->getGmailService();
+            $emailTest .= "Gmail API configured: " . ($gmailService->isConfigured() ? 'YES' : 'NO');
+        } catch (\Exception $e) {
+            $emailTest .= "ERROR - " . $e->getMessage();
+        }
+
+        return response()->json([
+            'message' => 'Database and Email Test',
+            'database_test' => $dbTest,
+            'email_test' => $emailTest,
+            'env_check' => [
+                'db_connection' => config('database.default'),
+                'db_host' => config('database.connections.mysql.host'),
+                'db_database' => config('database.connections.mysql.database'),
+                'mail_mailer' => config('mail.default'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+                'mail_username' => config('mail.mailers.smtp.username'),
+                'google_client_id' => !empty(config('services.google.client_id')) ? 'SET' : 'NOT SET',
+                'google_refresh_token' => !empty(config('services.google.refresh_token')) ? 'SET' : 'NOT SET'
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Test failed',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
+// Test approval email for existing application
+Route::get('/test-approval-email/{applicationId}', function ($applicationId) {
+    try {
+        $application = \App\Models\Application::find($applicationId);
+        
+        if (!$application) {
+            return response()->json([
+                'error' => 'Application not found',
+                'application_id' => $applicationId
+            ], 404);
+        }
+
+        // Generate test credentials
+        $testPassword = 'testpass123';
+        $testPwdId = 'PWD-TEST-' . $applicationId;
+
+        // Send approval email using SMTP only
+        \Illuminate\Support\Facades\Mail::send('emails.application-approved', [
+            'firstName' => $application->firstName,
+            'lastName' => $application->lastName,
+            'email' => $application->email,
+            'password' => $testPassword,
+            'pwdId' => $testPwdId,
+            'loginUrl' => 'http://localhost:3000/login'
+        ], function ($message) use ($application) {
+            $message->to($application->email)
+                   ->subject('PWD Application Approved - Account Created')
+                   ->from('sarinonhoelivan29@gmail.com', 'Cabuyao PDAO RMS');
+        });
+
+        return response()->json([
+            'message' => 'Approval email sent successfully',
+            'application' => [
+                'id' => $application->applicationID,
+                'name' => $application->firstName . ' ' . $application->lastName,
+                'email' => $application->email
+            ],
+            'credentials' => [
+                'email' => $application->email,
+                'password' => $testPassword,
+                'pwdId' => $testPwdId
+            ],
+            'from' => 'sarinonhoelivan29@gmail.com'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Failed to send approval email',
+            'message' => $e->getMessage(),
+            'application_id' => $applicationId
+        ], 500);
+    }
+});
+
+// Test Gmail integration route (for testing purposes)
+Route::get('/test-gmail-integration', function () {
+    try {
+        $emailService = new \App\Services\EmailService();
+        $gmailService = $emailService->getGmailService();
+        
+        $status = [
+            'gmail_configured' => $gmailService->isConfigured(),
+            'client_id_set' => !empty(config('services.google.client_id')),
+            'client_secret_set' => !empty(config('services.google.client_secret')),
+            'refresh_token_set' => !empty(config('services.google.refresh_token')),
+            'redirect_uri' => config('services.google.redirect_uri'),
+            'frontend_url' => config('app.frontend_url', 'http://localhost:3000'),
+            'admin_email' => 'sarinonhoelivan29@gmail.com',
+            'mail_from_address' => config('mail.from.address'),
+            'mail_from_name' => config('mail.from.name')
+        ];
+        
+        return response()->json([
+            'message' => 'Gmail integration test for admin email',
+            'status' => $status,
+            'admin_email' => 'sarinonhoelivan29@gmail.com',
+            'instructions' => [
+                '1. Set up Google Cloud Console project',
+                '2. Enable Gmail API',
+                '3. Create OAuth 2.0 credentials',
+                '4. Add environment variables to .env',
+                '5. Complete OAuth flow via /api/gmail/auth-url',
+                '6. Test email sending via /api/gmail/test'
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Gmail integration test failed',
+            'message' => $e->getMessage(),
+            'admin_email' => 'sarinonhoelivan29@gmail.com'
+        ], 500);
+    }
+});
+
+// Test sending approval email to applicant
+Route::get('/test-send-approval-email/{email}', function ($email) {
+    try {
+        $emailService = new \App\Services\EmailService();
+        
+        $testData = [
+            'firstName' => 'Test',
+            'lastName' => 'User',
+            'email' => $email, // This will be the recipient
+            'password' => 'testpass123',
+            'pwdId' => 'PWD-TEST-001',
+            'loginUrl' => 'http://localhost:3000/login'
+        ];
+        
+        $result = $emailService->sendApplicationApprovalEmail($testData);
+        
+        return response()->json([
+            'message' => 'Test approval email sent',
+            'success' => $result,
+            'recipient' => $email,
+            'from' => 'sarinonhoelivan29@gmail.com',
+            'test_data' => $testData
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Failed to send test approval email',
+            'message' => $e->getMessage(),
+            'recipient' => $email
+        ], 500);
+    }
+});
+
+// Test application submission (for debugging)
+Route::post('/test-application-submission', function (Request $request) {
+    try {
+        // Log the incoming request
+        \Illuminate\Support\Facades\Log::info('Test application submission', [
+            'request_data' => $request->all(),
+            'has_files' => $request->hasFile('idPicture') || $request->hasFile('medicalCertificate') || $request->hasFile('barangayClearance')
+        ]);
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'firstName' => 'required|string|max:50',
+            'lastName' => 'required|string|max:50',
+            'email' => 'required|email|unique:application,email',
+            'contactNumber' => 'required|string|max:20',
+            'barangay' => 'nullable|string|max:100',
+            'disabilityType' => 'required|string|max:100',
+            'address' => 'required|string',
+            'birthDate' => 'required|date',
+            'gender' => 'required|string|max:10',
+            'idType' => 'required|string|max:50',
+            'idNumber' => 'required|string|max:50',
+            'idPicture' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'medicalCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'barangayClearance' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            \Illuminate\Support\Facades\Log::error('Validation failed', [
+                'errors' => $validator->errors()
+            ]);
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $request->all();
+        $data['status'] = 'Pending Barangay Approval';
+        $data['submissionDate'] = now();
+
+        // Handle file uploads
+        $uploadPath = 'uploads/applications/' . date('Y/m/d');
+        \Illuminate\Support\Facades\Storage::makeDirectory($uploadPath);
+
+        if ($request->hasFile('idPicture')) {
+            $idPictureFile = $request->file('idPicture');
+            $idPictureName = 'id_picture_' . time() . '.' . $idPictureFile->getClientOriginalExtension();
+            $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName);
+            $data['idPicture'] = $idPicturePath;
+        }
+
+        if ($request->hasFile('medicalCertificate')) {
+            $medicalFile = $request->file('medicalCertificate');
+            $medicalName = 'medical_cert_' . time() . '.' . $medicalFile->getClientOriginalExtension();
+            $medicalPath = $medicalFile->storeAs($uploadPath, $medicalName);
+            $data['medicalCertificate'] = $medicalPath;
+        }
+
+        if ($request->hasFile('barangayClearance')) {
+            $clearanceFile = $request->file('barangayClearance');
+            $clearanceName = 'barangay_clearance_' . time() . '.' . $clearanceFile->getClientOriginalExtension();
+            $clearancePath = $clearanceFile->storeAs($uploadPath, $clearanceName);
+            $data['barangayClearance'] = $clearancePath;
+        }
+
+        \Illuminate\Support\Facades\Log::info('Creating application with data', [
+            'data' => $data
+        ]);
+
+        $application = \App\Models\Application::create($data);
+
+        \Illuminate\Support\Facades\Log::info('Application created successfully', [
+            'application_id' => $application->applicationID,
+            'application' => $application->toArray()
+        ]);
+
+        return response()->json([
+            'message' => 'Test application submitted successfully',
+            'application' => $application,
+            'debug_info' => [
+                'data_sent' => $data,
+                'application_id' => $application->applicationID
+            ]
+        ], 201);
+
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Test application submission failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'error' => 'Failed to submit test application',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
 });
 
 // Mobile connectivity test
@@ -63,7 +335,7 @@ Route::get('/simple-pwd', function () {
 Route::get('/mock-pwd', function () {
     try {
         $members = \App\Models\PWDMember::with(['applications' => function($query) {
-            $query->where('status', 'Approved')->latest()->first();
+            $query->where('status', 'Approved')->latest();
         }])->get();
         
         // Transform the data to match the expected format
@@ -73,23 +345,28 @@ Route::get('/mock-pwd', function () {
             $emergencyContact = $approvedApplication ? $approvedApplication->emergencyContact : null;
             $barangay = $approvedApplication ? $approvedApplication->barangay : null;
             
-                        return [
-                            'id' => $member->id,
-                            'userID' => $member->userID,
-                            'pwd_id' => $member->pwd_id ?: "PWD-{$member->userID}",
-                            'firstName' => $member->firstName,
-                            'lastName' => $member->lastName,
-                            'middleName' => $member->middleName,
-                            'birthDate' => $member->birthDate,
-                            'gender' => $member->gender,
-                            'disabilityType' => $member->disabilityType,
-                            'address' => $member->address,
-                            'contactNumber' => $member->contactNumber,
-                            'emergencyContact' => $emergencyContact,
-                            'barangay' => $barangay,
-                            'qr_code_data' => $member->qr_code_data,
-                            'qr_code_generated_at' => $member->qr_code_generated_at
-                        ];
+            // Get email from the User table
+            $user = \App\Models\User::where('userID', $member->userID)->first();
+            $email = $user ? $user->email : null;
+            
+            return [
+                'id' => $member->id,
+                'userID' => $member->userID,
+                'pwd_id' => $member->pwd_id ?: "PWD-{$member->userID}",
+                'firstName' => $member->firstName,
+                'lastName' => $member->lastName,
+                'middleName' => $member->middleName,
+                'birthDate' => $member->birthDate,
+                'gender' => $member->gender,
+                'disabilityType' => $member->disabilityType,
+                'address' => $member->address,
+                'contactNumber' => $member->contactNumber,
+                'emergencyContact' => $emergencyContact,
+                'barangay' => $barangay,
+                'email' => $email,
+                'qr_code_data' => $member->qr_code_data,
+                'qr_code_generated_at' => $member->qr_code_generated_at
+            ];
         });
         
         return response()->json([
@@ -109,12 +386,84 @@ Route::get('/mock-pwd', function () {
 Route::apiResource('users', 'App\Http\Controllers\API\UserController');
 Route::apiResource('pwd-members', 'App\Http\Controllers\API\PWDMemberController');
 Route::apiResource('complaints', 'App\Http\Controllers\API\ComplaintController');
-Route::apiResource('benefits', 'App\Http\Controllers\API\BenefitController');
 Route::apiResource('reports', 'App\Http\Controllers\API\ReportController');
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Public benefit routes (for frontend access)
+Route::get('/benefits', [BenefitController::class, 'index']);
+Route::get('/benefits/{id}', [BenefitController::class, 'show']);
+
+// Test route for benefits
+Route::get('/test-benefits', function () {
+    return response()->json(['message' => 'Benefits route test']);
+});
+
+// Simple benefits routes
+Route::get('/benefits-simple', function () {
+    try {
+        $benefits = \App\Models\Benefit::all();
+        return response()->json($benefits);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+Route::post('/benefits-simple', function (Request $request) {
+    try {
+        $benefit = \App\Models\Benefit::create($request->all());
+        return response()->json($benefit, 201);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+Route::put('/benefits-simple/{id}', function (Request $request, $id) {
+    try {
+        $benefit = \App\Models\Benefit::find($id);
+        if (!$benefit) {
+            return response()->json(['error' => 'Benefit not found'], 404);
+        }
+        $benefit->update($request->all());
+        return response()->json($benefit);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/benefits-simple/{id}', function ($id) {
+    try {
+        $benefit = \App\Models\Benefit::find($id);
+        if (!$benefit) {
+            return response()->json(['error' => 'Benefit not found'], 404);
+        }
+        $benefit->delete();
+        return response()->json(['message' => 'Benefit deleted successfully']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+// Benefit claims routes
+Route::get('/benefit-claims/{benefitId}', function ($benefitId) {
+    try {
+        $claims = \App\Models\BenefitClaim::where('benefitID', $benefitId)->get();
+        return response()->json($claims);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+Route::post('/benefit-claims', function (Request $request) {
+    try {
+        $claim = \App\Models\BenefitClaim::create($request->all());
+        return response()->json($claim, 201);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
 
 // Public announcements route - PWD members need to see announcements
 Route::get('/announcements', [AnnouncementController::class, 'index']);
@@ -249,6 +598,12 @@ Route::put('/pwd-member/change-password', function (Request $request) {
 // Public application submission route
 Route::post('/applications', function (Request $request) {
     try {
+        // Log the incoming request for debugging
+        \Illuminate\Support\Facades\Log::info('Application submission attempt', [
+            'request_data' => $request->all(),
+            'has_files' => $request->hasFile('idPicture') || $request->hasFile('medicalCertificate') || $request->hasFile('barangayClearance')
+        ]);
+
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'firstName' => 'required|string|max:50',
             'lastName' => 'required|string|max:50',
@@ -261,9 +616,15 @@ Route::post('/applications', function (Request $request) {
             'gender' => 'required|string|max:10',
             'idType' => 'required|string|max:50',
             'idNumber' => 'required|string|max:50',
+            'idPicture' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'medicalCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'barangayClearance' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
         ]);
 
         if ($validator->fails()) {
+            \Illuminate\Support\Facades\Log::error('Application validation failed', [
+                'errors' => $validator->errors()
+            ]);
             return response()->json([
                 'error' => 'Validation failed',
                 'messages' => $validator->errors()
@@ -274,7 +635,41 @@ Route::post('/applications', function (Request $request) {
         $data['status'] = 'Pending Barangay Approval';
         $data['submissionDate'] = now();
 
+        // Handle file uploads
+        $uploadPath = 'uploads/applications/' . date('Y/m/d');
+        \Illuminate\Support\Facades\Storage::makeDirectory($uploadPath);
+
+        if ($request->hasFile('idPicture')) {
+            $idPictureFile = $request->file('idPicture');
+            $idPictureName = 'id_picture_' . time() . '.' . $idPictureFile->getClientOriginalExtension();
+            $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName);
+            $data['idPicture'] = $idPicturePath;
+        }
+
+        if ($request->hasFile('medicalCertificate')) {
+            $medicalFile = $request->file('medicalCertificate');
+            $medicalName = 'medical_cert_' . time() . '.' . $medicalFile->getClientOriginalExtension();
+            $medicalPath = $medicalFile->storeAs($uploadPath, $medicalName);
+            $data['medicalCertificate'] = $medicalPath;
+        }
+
+        if ($request->hasFile('barangayClearance')) {
+            $clearanceFile = $request->file('barangayClearance');
+            $clearanceName = 'barangay_clearance_' . time() . '.' . $clearanceFile->getClientOriginalExtension();
+            $clearancePath = $clearanceFile->storeAs($uploadPath, $clearanceName);
+            $data['barangayClearance'] = $clearancePath;
+        }
+
+        \Illuminate\Support\Facades\Log::info('Creating application with data', [
+            'data' => $data
+        ]);
+
         $application = \App\Models\Application::create($data);
+
+        \Illuminate\Support\Facades\Log::info('Application created successfully', [
+            'application_id' => $application->applicationID,
+            'application' => $application->toArray()
+        ]);
 
         return response()->json([
             'message' => 'Application submitted successfully',
@@ -282,6 +677,11 @@ Route::post('/applications', function (Request $request) {
         ], 201);
 
     } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Application submission failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
         return response()->json([
             'error' => 'Failed to submit application',
             'message' => $e->getMessage()
@@ -381,6 +781,251 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/test', [DashboardController::class, 'test']);
     Route::get('dashboard/recent-activities', [DashboardController::class, 'getRecentActivities']);
     Route::get('dashboard/barangay-contacts', [DashboardController::class, 'getBarangayContacts']);
+    
+    // Gmail API routes for admin email (sarinonhoelivan29@gmail.com)
+    Route::get('gmail/auth-url', [GmailController::class, 'getAuthUrl']);
+    Route::post('gmail/callback', [GmailController::class, 'handleCallback']);
+    Route::get('gmail/test', [GmailController::class, 'testConnection']);
+    Route::get('gmail/status', [GmailController::class, 'getStatus']);
+});
+
+// Simple test route
+Route::get('/api/test-basic', function () {
+    return response()->json([
+        'message' => 'Server is working!',
+        'status' => 'OK',
+        'time' => now()
+    ]);
+});
+
+// Test email sending with updated credentials
+Route::get('/api/test-email/{email}', function ($email) {
+    try {
+        $emailService = new \App\Services\EmailService();
+        
+        $result = $emailService->sendApplicationApprovalEmail([
+            'firstName' => 'Test',
+            'lastName' => 'User',
+            'email' => $email,
+            'password' => 'test123',
+            'pwdId' => 'PWD-000001',
+            'loginUrl' => 'http://localhost:3000/login'
+        ]);
+
+        return response()->json([
+            'message' => 'Email test completed',
+            'email' => $email,
+            'sent' => $result,
+            'from' => 'sarinonhoelivan29@gmail.com'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Email test failed',
+            'message' => $e->getMessage(),
+            'email' => $email
+        ], 500);
+    }
+});
+
+Route::get('/api/test-admin-approve/{applicationId}', function ($applicationId) {
+    try {
+        $application = \App\Models\Application::findOrFail($applicationId);
+        
+        // Generate secure random password
+        $randomPassword = \Illuminate\Support\Str::random(12);
+        
+        // Check if user already exists
+        $existingUser = \App\Models\User::where('email', $application->email)->first();
+        
+        if ($existingUser) {
+            // User already exists, update their role to PWDMember and password
+            $existingUser->update([
+                'role' => 'PWDMember',
+                'status' => 'active',
+                'password' => \Illuminate\Support\Facades\Hash::make($randomPassword)
+            ]);
+            $pwdUser = $existingUser;
+        } else {
+            // Create new PWD Member User Account
+            $pwdUser = \App\Models\User::create([
+                'username' => $application->email, // Use email as username
+                'email' => $application->email,
+                'password' => \Illuminate\Support\Facades\Hash::make($randomPassword),
+                'role' => 'PWDMember',
+                'status' => 'active'
+            ]);
+        }
+
+        // Generate unique PWD ID
+        $pwdId = 'PWD-' . str_pad($pwdUser->userID, 6, '0', STR_PAD_LEFT);
+
+        // Update application status
+        $application->update([
+            'status' => 'Approved',
+            'remarks' => 'Test approval - Account created',
+            'pwdID' => $pwdUser->userID
+        ]);
+
+        // Send email notification
+        try {
+            $emailService = new \App\Services\EmailService();
+            $emailSent = $emailService->sendApplicationApprovalEmail([
+                'firstName' => $application->firstName,
+                'lastName' => $application->lastName,
+                'email' => $application->email,
+                'password' => $randomPassword,
+                'pwdId' => $pwdId,
+                'loginUrl' => config('app.frontend_url', 'http://localhost:3000/login')
+            ]);
+
+            return response()->json([
+                'message' => '✅ ADMIN APPROVAL SUCCESSFUL!',
+                'details' => [
+                    'application_approved' => true,
+                    'user_account_created' => true,
+                    'email_sent' => $emailSent
+                ],
+                'application' => [
+                    'id' => $application->applicationID,
+                    'name' => $application->firstName . ' ' . $application->lastName,
+                    'email' => $application->email,
+                    'status' => $application->status
+                ],
+                'user_account' => [
+                    'userID' => $pwdUser->userID,
+                    'email' => $pwdUser->email,
+                    'role' => $pwdUser->role,
+                    'status' => $pwdUser->status,
+                    'pwdId' => $pwdId
+                ],
+                'login_credentials' => [
+                    'email' => $application->email,
+                    'password' => $randomPassword,
+                    'note' => 'Password is hashed in database for security'
+                ],
+                'email_status' => $emailSent ? 'Email sent successfully' : 'Email failed to send'
+            ]);
+
+        } catch (\Exception $mailError) {
+            return response()->json([
+                'message' => '✅ ADMIN APPROVAL SUCCESSFUL! (Email failed)',
+                'details' => [
+                    'application_approved' => true,
+                    'user_account_created' => true,
+                    'email_sent' => false,
+                    'email_error' => $mailError->getMessage()
+                ],
+                'application' => $application,
+                'user_account' => $pwdUser,
+                'login_credentials' => [
+                    'email' => $application->email,
+                    'password' => $randomPassword
+                ]
+            ]);
+        }
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Failed to approve application',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
+
+Route::get('/api/test-approve-application/{applicationId}', function ($applicationId) {
+    try {
+        $application = \App\Models\Application::findOrFail($applicationId);
+        
+        // Generate secure random password
+        $randomPassword = \Illuminate\Support\Str::random(12);
+        
+        // Check if user already exists
+        $existingUser = \App\Models\User::where('email', $application->email)->first();
+        
+        if ($existingUser) {
+            // User already exists, update their role to PWDMember and password
+            $existingUser->update([
+                'role' => 'PWDMember',
+                'status' => 'active',
+                'password' => \Illuminate\Support\Facades\Hash::make($randomPassword)
+            ]);
+            $pwdUser = $existingUser;
+        } else {
+            // Create new PWD Member User Account
+            $pwdUser = \App\Models\User::create([
+                'username' => $application->email, // Use email as username
+                'email' => $application->email,
+                'password' => \Illuminate\Support\Facades\Hash::make($randomPassword),
+                'role' => 'PWDMember',
+                'status' => 'active'
+            ]);
+        }
+
+        // Generate unique PWD ID
+        $pwdId = 'PWD-' . str_pad($pwdUser->userID, 6, '0', STR_PAD_LEFT);
+
+        // Update application status
+        $application->update([
+            'status' => 'Approved',
+            'remarks' => 'Test approval - Account created',
+            'pwdID' => $pwdUser->userID
+        ]);
+
+        // Send email notification
+        try {
+            $emailService = new \App\Services\EmailService();
+            $emailSent = $emailService->sendApplicationApprovalEmail([
+                'firstName' => $application->firstName,
+                'lastName' => $application->lastName,
+                'email' => $application->email,
+                'password' => $randomPassword,
+                'pwdId' => $pwdId,
+                'loginUrl' => config('app.frontend_url', 'http://localhost:3000/login')
+            ]);
+
+            return response()->json([
+                'message' => 'Application approved successfully! User account created and email sent.',
+                'application' => [
+                    'id' => $application->applicationID,
+                    'name' => $application->firstName . ' ' . $application->lastName,
+                    'email' => $application->email,
+                    'status' => $application->status
+                ],
+                'user_account' => [
+                    'userID' => $pwdUser->userID,
+                    'email' => $pwdUser->email,
+                    'role' => $pwdUser->role,
+                    'status' => $pwdUser->status,
+                    'pwdId' => $pwdId
+                ],
+                'login_credentials' => [
+                    'email' => $application->email,
+                    'password' => $randomPassword,
+                    'note' => 'Password is hashed in database for security'
+                ],
+                'email_sent' => $emailSent
+            ]);
+
+        } catch (\Exception $mailError) {
+            return response()->json([
+                'message' => 'Application approved and user account created, but email failed to send.',
+                'error' => $mailError->getMessage(),
+                'application' => $application,
+                'user_account' => $pwdUser,
+                'login_credentials' => [
+                    'email' => $application->email,
+                    'password' => $randomPassword
+                ]
+            ]);
+        }
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Failed to approve application',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 });
 
 // Fallback route for undefined API endpoints

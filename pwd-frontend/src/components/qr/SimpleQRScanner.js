@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import QrScanner from 'qr-scanner';
 import pwdMemberService from '../../services/pwdMemberService';
+import benefitService from '../../services/benefitService';
 import api from '../../services/api';
 
 const SimpleQRScanner = ({ open, onClose, onScan }) => {
@@ -35,6 +36,8 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
   const [currentBenefits, setCurrentBenefits] = useState([]);
   const [scanner, setScanner] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [manualInput, setManualInput] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -52,17 +55,30 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
     };
   }, [open]);
 
-  // Load birthday benefits from localStorage
-  const loadBirthdayBenefits = () => {
+  // Load birthday benefits from database
+  const loadBirthdayBenefits = async () => {
     try {
-      const savedBenefits = localStorage.getItem('benefits');
-      if (savedBenefits) {
-        const benefits = JSON.parse(savedBenefits);
-        const birthdayBenefits = benefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+      const benefitsData = await benefitService.getAll();
+      if (benefitsData && Array.isArray(benefitsData)) {
+        const birthdayBenefits = benefitsData.filter(benefit => benefit.type === 'Birthday Cash Gift');
         setCurrentBenefits(birthdayBenefits);
+      } else {
+        setCurrentBenefits([]);
       }
     } catch (error) {
       console.error('Error loading birthday benefits:', error);
+      // Fallback to localStorage if database fails
+      try {
+        const savedBenefits = localStorage.getItem('benefits');
+        if (savedBenefits) {
+          const benefits = JSON.parse(savedBenefits);
+          const birthdayBenefits = benefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
+          setCurrentBenefits(birthdayBenefits);
+        }
+      } catch (localError) {
+        console.error('Error loading from localStorage:', localError);
+        setCurrentBenefits([]);
+      }
     }
   };
 
@@ -71,6 +87,36 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
     setMemberInfo(null);
     setError(null);
     setLoading(false);
+    setManualInput('');
+    setShowManualInput(false);
+  };
+
+  // Handle manual QR code input
+  const handleManualInput = () => {
+    if (!manualInput.trim()) {
+      setError('Please enter a QR code or PWD ID');
+      return;
+    }
+
+    try {
+      // Try to parse as JSON first (if it's a QR code)
+      let qrData;
+      try {
+        qrData = JSON.parse(manualInput);
+      } catch {
+        // If not JSON, treat as PWD ID
+        qrData = { pwd_id: manualInput.trim() };
+      }
+
+      // Process the manual input as if it was scanned
+      const mockResult = { data: JSON.stringify(qrData) };
+      handleQRScan(mockResult);
+      setManualInput('');
+      setShowManualInput(false);
+    } catch (error) {
+      console.error('Error processing manual input:', error);
+      setError('Invalid QR code format. Please check and try again.');
+    }
   };
 
   const initializeCamera = async () => {
@@ -107,40 +153,44 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
             setCameraActive(true);
 
             // Initialize QR scanner after video is ready
-            const qrScanner = new QrScanner(
-              videoRef.current,
-              (result) => {
-                console.log('🎯 QR Code scanned:', result);
-                console.log('📄 QR Code data:', result.data);
-                console.log('🔍 QR Code format:', typeof result.data);
-                
-                // Add a small delay to prevent multiple rapid scans
-                setTimeout(() => {
-                  handleQRScan(result);
-                }, 100);
-              },
-              {
-                onDecodeError: (error) => {
-                  // Only log decode errors occasionally to avoid spam
-                  if (Math.random() < 0.01) { // Log only 1% of decode errors
-                    console.log('Decode error (normal):', error.message);
-                  }
+            let qrScanner;
+            try {
+              qrScanner = new QrScanner(
+                videoRef.current,
+                (result) => {
+                  // Add a small delay to prevent multiple rapid scans
+                  setTimeout(() => {
+                    handleQRScan(result);
+                  }, 100);
                 },
-                highlightScanRegion: true,
-                highlightCodeOutline: true,
-                preferredCamera: 'environment', // Use back camera for better QR scanning
-                maxScansPerSecond: 10, // Increase scan frequency for better detection
-                returnDetailedScanResult: true,
-                preferredEnvironment: 'environment'
-              }
-            );
+                {
+                  onDecodeError: (error) => {
+                    // Only log decode errors occasionally to avoid spam
+                    if (Math.random() < 0.01) { // Log only 1% of decode errors
+                      console.log('Decode error (normal):', error.message);
+                    }
+                  },
+                  highlightScanRegion: true,
+                  highlightCodeOutline: true,
+                  preferredCamera: 'environment', // Use back camera for better QR scanning
+                  maxScansPerSecond: 10, // Increase scan frequency for better detection
+                  returnDetailedScanResult: true,
+                  preferredEnvironment: 'environment',
+                  // Disable web worker to avoid chunk loading issues
+                  worker: false
+                }
+              );
+            } catch (scannerError) {
+              console.error('Failed to create QR scanner:', scannerError);
+              throw new Error('QR Scanner initialization failed. Please try refreshing the page.');
+            }
 
             setScanner(qrScanner);
             await qrScanner.start();
-            console.log('QR Scanner started successfully');
-          } catch (error) {
-            console.error('Error starting QR scanner:', error);
-            setError('Failed to start QR scanner');
+          } catch (qrError) {
+            console.error('QR Scanner initialization error:', qrError);
+            setError('Failed to initialize QR scanner. Please try refreshing the page.');
+            setLoading(false);
           }
         };
       }
@@ -184,12 +234,6 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
 
   const handleQRScan = async (result) => {
     try {
-      console.log('=== QR SCAN STARTED ===');
-      console.log('Raw result:', result);
-      console.log('Result data:', result.data);
-      console.log('Result data type:', typeof result.data);
-      console.log('Result data length:', result.data?.length);
-      
       setLoading(true);
       setIsProcessing(true);
       setError(null);
@@ -198,10 +242,8 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       let qrData;
       try {
         qrData = JSON.parse(result.data);
-        console.log('✅ Successfully parsed QR data as JSON:', qrData);
       } catch (parseError) {
         console.error('❌ Failed to parse QR code as JSON:', parseError);
-        console.log('Raw QR code content:', result.data);
         
         // Try to handle non-JSON QR codes (like URLs or plain text)
         if (result.data.includes('pwd') || result.data.includes('PWD')) {
@@ -209,7 +251,6 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
           const pwdIdMatch = result.data.match(/PWD-?\d+/i);
           if (pwdIdMatch) {
             const pwdId = pwdIdMatch[0];
-            console.log('✅ Extracted PWD ID from text:', pwdId);
             
             // Create a simple QR data object
             qrData = {
@@ -234,12 +275,8 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       setScannedData(qrData);
       
       // Find member in PWD data
-      console.log('Fetching PWD members...');
       const pwdMembers = await pwdMemberService.getAll();
-      console.log('PWD members response:', pwdMembers);
-      
       const members = pwdMembers.members || [];
-      console.log('Available members:', members.map(m => `${m.firstName} ${m.lastName} (${m.pwd_id})`));
       
       // Try multiple ways to find the member
       const member = members.find(m => 
@@ -253,14 +290,12 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
         (qrData.userID && m.userID && m.userID.toString() === qrData.userID.toString())
       );
       
-      console.log('Found member:', member);
       
       if (member) {
         setMemberInfo(member);
         
         // Check eligibility for current birthday benefits
         const eligibleBenefits = checkEligibility(member);
-        console.log('Eligible benefits:', eligibleBenefits);
         
         setMemberInfo(prev => ({
           ...prev,
@@ -269,15 +304,13 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
         
         // Process benefit claims for eligible benefits
         if (eligibleBenefits.length > 0) {
-          console.log('Processing benefit claims...');
           await processBenefitClaims(member, eligibleBenefits);
         }
         
         // Show success message
-        console.log(`✅ Successfully scanned QR code for: ${member.firstName} ${member.lastName}`);
+        alert(`Successfully scanned QR code for: ${member.firstName} ${member.lastName}`);
         
       } else {
-        console.log('Member not found');
         setError(`PWD member not found in database. Searched for: ${JSON.stringify({
           pwdId: qrData.pwdId,
           userID: qrData.userID,
@@ -290,7 +323,6 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
     } finally {
       setLoading(false);
       setIsProcessing(false);
-      console.log('=== QR SCAN COMPLETED ===');
     }
   };
 
@@ -316,7 +348,6 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
   // Process benefit claims for eligible benefits
   const processBenefitClaims = async (member, eligibleBenefits) => {
     try {
-      console.log('Processing benefit claims for member:', member.firstName, member.lastName);
       
       for (const benefit of eligibleBenefits) {
         try {
@@ -329,16 +360,13 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
           if (existingClaims && existingClaims.length > 0) {
             // Update existing claim to "Claimed" status
             const claim = existingClaims[0];
-            console.log('Updating existing claim:', claim.claimID);
             
             await api.patch(`/benefit-claims/${claim.claimID}/status`, {
               status: 'Claimed'
             });
             
-            console.log(`✅ Updated benefit claim for ${benefit.name}`);
           } else {
             // Create new claim
-            console.log('Creating new benefit claim for:', benefit.name);
             
             await api.post('/benefit-claims', {
               pwdID: member.userID,
@@ -347,7 +375,6 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
               status: 'Claimed'
             });
             
-            console.log(`✅ Created benefit claim for ${benefit.name}`);
           }
         } catch (claimError) {
           console.error(`Error processing claim for benefit ${benefit.name}:`, claimError);
@@ -364,7 +391,7 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       }
       
       // Show success message
-      console.log(`✅ Successfully processed ${eligibleBenefits.length} benefit claims for ${member.firstName} ${member.lastName}`);
+      alert(`Successfully processed ${eligibleBenefits.length} benefit claims for ${member.firstName} ${member.lastName}`);
       
     } catch (error) {
       console.error('Error processing benefit claims:', error);
@@ -386,7 +413,6 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       
       // Here you would make an API call to create the claim
       // For now, we'll just show success
-      console.log('Creating benefit claim:', claimData);
       
       // Show success message
       setError(null);
@@ -455,16 +481,71 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
             <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
-            <Button
-              variant="contained"
-              onClick={initializeCamera}
-              sx={{
-                bgcolor: '#E67E22',
-                '&:hover': { bgcolor: '#D35400' }
-              }}
-            >
-              Retry Camera
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 3 }}>
+              <Button
+                variant="contained"
+                onClick={initializeCamera}
+                sx={{
+                  bgcolor: '#E67E22',
+                  '&:hover': { bgcolor: '#D35400' }
+                }}
+              >
+                Retry Camera
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => setShowManualInput(!showManualInput)}
+                sx={{
+                  borderColor: '#2C3E50',
+                  color: '#2C3E50',
+                  '&:hover': {
+                    borderColor: '#34495E',
+                    backgroundColor: 'rgba(44, 62, 80, 0.1)'
+                  }
+                }}
+              >
+                Manual Input
+              </Button>
+            </Box>
+            
+            {showManualInput && (
+              <Box sx={{ maxWidth: 400, mx: 'auto' }}>
+                <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+                  Enter QR code data or PWD ID manually:
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <input
+                    type="text"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    placeholder="Enter QR code data or PWD ID..."
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleManualInput();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleManualInput}
+                    sx={{
+                      bgcolor: '#2C3E50',
+                      '&:hover': { bgcolor: '#34495E' },
+                      px: 2
+                    }}
+                  >
+                    Process
+                  </Button>
+                </Box>
+              </Box>
+            )}
           </Box>
         ) : memberInfo ? (
           /* Scanned Member Information */
@@ -676,6 +757,48 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
             <Typography variant="caption" sx={{ mt: 1, color: '#95A5A6', display: 'block' }}>
               📱 Camera access requires HTTPS or localhost. Make sure to allow camera permissions when prompted.
             </Typography>
+            
+            {/* Manual Input Option */}
+            <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid #E0E0E0' }}>
+              <Typography variant="body2" sx={{ mb: 2, color: '#666', textAlign: 'center' }}>
+                Having trouble with the camera? Try manual input:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, maxWidth: 400, mx: 'auto' }}>
+                <input
+                  type="text"
+                  value={manualInput}
+                  onChange={(e) => setManualInput(e.target.value)}
+                  placeholder="Enter QR code data or PWD ID..."
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleManualInput();
+                    }
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  onClick={handleManualInput}
+                  sx={{
+                    borderColor: '#2C3E50',
+                    color: '#2C3E50',
+                    '&:hover': {
+                      borderColor: '#34495E',
+                      backgroundColor: 'rgba(44, 62, 80, 0.1)'
+                    },
+                    px: 2
+                  }}
+                >
+                  Process
+                </Button>
+              </Box>
+            </Box>
           </Box>
         )}
       </DialogContent>

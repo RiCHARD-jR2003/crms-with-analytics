@@ -59,6 +59,7 @@ import {
 } from '@mui/icons-material';
 import AdminSidebar from '../shared/AdminSidebar';
 import pwdMemberService from '../../services/pwdMemberService';
+import benefitService from '../../services/benefitService';
 
 const Ayuda = () => {
   const [openDialog, setOpenDialog] = useState(false);
@@ -115,22 +116,20 @@ const Ayuda = () => {
     setOpenDialog(true);
   };
 
-  // Load benefits and pending schedules from localStorage when component mounts
+  // Load benefits from database and pending schedules from localStorage when component mounts
   useEffect(() => {
-    const loadSavedData = () => {
+    const loadData = async () => {
       try {
-        // Load benefits
-        const savedBenefits = localStorage.getItem('benefits');
-        console.log('Loading benefits from localStorage:', savedBenefits);
-        if (savedBenefits && savedBenefits !== 'null' && savedBenefits !== 'undefined') {
-          const parsedBenefits = JSON.parse(savedBenefits);
-          console.log('Parsed benefits:', parsedBenefits);
-          if (Array.isArray(parsedBenefits)) {
-            setBenefits(parsedBenefits);
-          }
+        // Load benefits from database
+        const benefitsData = await benefitService.getAll();
+        console.log('Loading benefits from database:', benefitsData);
+        if (benefitsData && Array.isArray(benefitsData)) {
+          setBenefits(benefitsData);
+        } else {
+          setBenefits([]);
         }
 
-        // Load pending schedules
+        // Load pending schedules from localStorage (for now)
         const savedPendingSchedules = localStorage.getItem('pendingSchedules');
         console.log('Loading pending schedules from localStorage:', savedPendingSchedules);
         if (savedPendingSchedules && savedPendingSchedules !== 'null' && savedPendingSchedules !== 'undefined') {
@@ -141,14 +140,25 @@ const Ayuda = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading saved data:', error);
-        // Clear invalid data
-        localStorage.removeItem('benefits');
-        localStorage.removeItem('pendingSchedules');
+        console.error('Error loading data:', error);
+        // Fallback to localStorage for benefits if database fails
+        try {
+          const savedBenefits = localStorage.getItem('benefits');
+          if (savedBenefits && savedBenefits !== 'null' && savedBenefits !== 'undefined') {
+            const parsedBenefits = JSON.parse(savedBenefits);
+            if (Array.isArray(parsedBenefits)) {
+              setBenefits(parsedBenefits);
+            }
+          }
+        } catch (localError) {
+          console.error('Error loading from localStorage:', localError);
+          setBenefits([]);
+        }
+        setPendingSchedules([]);
       }
     };
     
-    loadSavedData();
+    loadData();
   }, []);
 
   // Effect to fetch eligible members when benefit type, month/quarter, and barangay change
@@ -167,100 +177,150 @@ const Ayuda = () => {
     setEditingBenefit(null);
   };
 
-  const handleDeleteBenefit = (benefitId) => {
+  const handleDeleteBenefit = async (benefitId) => {
     if (window.confirm('Are you sure you want to delete this benefit program? This action cannot be undone.')) {
-      const updatedBenefits = benefits.filter(benefit => benefit.id !== benefitId);
-      setBenefits(updatedBenefits);
-      // Save to localStorage for BenefitTracking to access
-      localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
+      try {
+        await benefitService.delete(benefitId);
+        const updatedBenefits = benefits.filter(benefit => benefit.id !== benefitId);
+        setBenefits(updatedBenefits);
+        // Also update localStorage for backward compatibility
+        localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
+        alert('Benefit program deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting benefit:', error);
+        alert('Failed to delete benefit program: ' + (error.message || 'Unknown error'));
+      }
     }
   };
 
-  const handleSubmit = () => {
+  const handleDeletePendingSchedule = async (scheduleId) => {
+    if (window.confirm('Are you sure you want to delete this pending schedule? This action cannot be undone.')) {
+      try {
+        // For pending schedules, we'll delete from localStorage for now
+        // In the future, you might want to create a separate table for pending schedules
+        const updatedPendingSchedules = pendingSchedules.filter(schedule => schedule.id !== scheduleId);
+        setPendingSchedules(updatedPendingSchedules);
+        localStorage.setItem('pendingSchedules', JSON.stringify(updatedPendingSchedules));
+        alert('Pending schedule deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting pending schedule:', error);
+        alert('Failed to delete pending schedule: ' + (error.message || 'Unknown error'));
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
     if (editingBenefit) {
       // Update existing benefit
-      const updatedBenefits = benefits.map(benefit => 
-        benefit.id === editingBenefit.id 
-          ? { 
-              ...benefit, 
+      try {
+        await benefitService.update(editingBenefit.id, formData);
+        const updatedBenefits = benefits.map(benefit => 
+          benefit.id === editingBenefit.id 
+            ? { 
+                ...benefit, 
                 title: formData.title,
-              type: formData.type,
-              amount: formData.amount,
-              description: formData.description,
-              targetRecipients: formData.targetRecipients,
+                type: formData.type,
+                amount: formData.amount,
+                description: formData.description,
+                targetRecipients: formData.targetRecipients,
                 distributionDate: formData.distributionDate,
                 expiryDate: formData.expiryDate,
                 barangay: formData.barangay,
                 quarter: formData.quarter,
                 quarterly: formData.quarterly,
-              status: formData.status
-            }
-          : benefit
-      );
-      setBenefits(updatedBenefits);
-      // Save to localStorage for BenefitTracking to access
-      localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
+                status: formData.status
+              }
+            : benefit
+        );
+        setBenefits(updatedBenefits);
+        // Save to localStorage for BenefitTracking to access
+        localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
+        alert('Benefit program updated successfully!');
+      } catch (error) {
+        console.error('Error updating benefit:', error);
+        alert('Failed to update benefit program: ' + (error.message || 'Unknown error'));
+      }
     } else {
       // Add new benefit to pending schedules
+      try {
         const newPendingSchedule = {
           id: pendingSchedules.length > 0 ? Math.max(...pendingSchedules.map(p => p.id), 0) + 1 : 1,
           title: formData.title,
           name: formData.title, // Keep name for backward compatibility
-        type: formData.type,
-        amount: formData.amount,
-        description: formData.description,
-        targetRecipients: formData.targetRecipients,
+          type: formData.type,
+          amount: formData.amount,
+          description: formData.description,
+          targetRecipients: formData.targetRecipients,
           distributionDate: formData.distributionDate,
           expiryDate: formData.expiryDate,
           barangay: formData.barangay,
           quarter: formData.quarter,
           quarterly: formData.quarterly,
           status: 'Pending Approval',
-        distributed: 0,
-        pending: 0,
-        color: getColorForType(formData.type),
+          distributed: 0,
+          pending: 0,
+          color: getColorForType(formData.type),
           birthdayMonth: formData.birthdayMonth,
           submittedDate: new Date().toISOString(),
           approvalFile: null
         };
-      const updatedPendingSchedules = [...pendingSchedules, newPendingSchedule];
-      setPendingSchedules(updatedPendingSchedules);
-      // Save to localStorage
-      localStorage.setItem('pendingSchedules', JSON.stringify(updatedPendingSchedules));
+        const updatedPendingSchedules = [...pendingSchedules, newPendingSchedule];
+        setPendingSchedules(updatedPendingSchedules);
+        // Save to localStorage
+        localStorage.setItem('pendingSchedules', JSON.stringify(updatedPendingSchedules));
+        alert('Benefit program submitted for approval!');
+      } catch (error) {
+        console.error('Error creating benefit:', error);
+        alert('Failed to create benefit program: ' + (error.message || 'Unknown error'));
+      }
     }
     handleCloseDialog();
   };
 
-  const handleApproveSchedule = () => {
+  const handleApproveSchedule = async () => {
     if (!approvalFile) {
       alert('Please upload the signed letter of approval from the mayor first.');
       return;
     }
 
     if (selectedPendingSchedule) {
-      // Move from pending schedules to active benefits
-      const approvedBenefit = {
-        ...selectedPendingSchedule,
-        id: benefits.length > 0 ? Math.max(...benefits.map(b => b.id), 0) + 1 : 1,
-        status: 'Active',
-        approvalFile: approvalFile.name,
-        approvedDate: new Date().toISOString()
-      };
+      try {
+        // Create the approved benefit in the database
+        const approvedBenefitData = {
+          ...selectedPendingSchedule,
+          status: 'Active',
+          approvalFile: approvalFile.name,
+          approvedDate: new Date().toISOString()
+        };
 
-      // Add to active benefits
-      const updatedBenefits = [...benefits, approvedBenefit];
-      setBenefits(updatedBenefits);
-      localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
+        // Save to database
+        const savedBenefit = await benefitService.create(approvedBenefitData);
+        
+        // Add to active benefits with the database ID
+        const approvedBenefit = {
+          ...approvedBenefitData,
+          id: savedBenefit.id || savedBenefit.benefitID || (benefits.length > 0 ? Math.max(...benefits.map(b => b.id), 0) + 1 : 1)
+        };
 
-      // Remove from pending schedules
-      const updatedPendingSchedules = pendingSchedules.filter(p => p.id !== selectedPendingSchedule.id);
-      setPendingSchedules(updatedPendingSchedules);
-      localStorage.setItem('pendingSchedules', JSON.stringify(updatedPendingSchedules));
+        const updatedBenefits = [...benefits, approvedBenefit];
+        setBenefits(updatedBenefits);
+        localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
 
-      // Close dialogs and reset
-      setOpenApprovalDialog(false);
-      setSelectedPendingSchedule(null);
-      setApprovalFile(null);
+        // Remove from pending schedules
+        const updatedPendingSchedules = pendingSchedules.filter(p => p.id !== selectedPendingSchedule.id);
+        setPendingSchedules(updatedPendingSchedules);
+        localStorage.setItem('pendingSchedules', JSON.stringify(updatedPendingSchedules));
+
+        // Close dialogs and reset
+        setOpenApprovalDialog(false);
+        setSelectedPendingSchedule(null);
+        setApprovalFile(null);
+        
+        alert('Benefit program approved and saved to database successfully!');
+      } catch (error) {
+        console.error('Error approving schedule:', error);
+        alert('Failed to approve benefit program: ' + (error.message || 'Unknown error'));
+      }
     }
   };
 
@@ -633,7 +693,10 @@ const Ayuda = () => {
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
                   <AttachMoney sx={{ fontSize: 40, color: '#27AE60', mb: 1 }} />
                   <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
-                    ₱0
+                    ₱{benefits.reduce((sum, benefit) => {
+                      const amount = benefit.amount ? benefit.amount.replace(/[₱,]/g, '') : '0';
+                      return sum + (parseInt(amount) || 0);
+                    }, 0).toLocaleString()}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 500 }}>
                     Total Distributed
@@ -655,7 +718,7 @@ const Ayuda = () => {
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
                   <People sx={{ fontSize: 40, color: '#3498DB', mb: 1 }} />
                   <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
-                    0
+                    {benefits.reduce((sum, benefit) => sum + (benefit.distributed || 0), 0)}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 500 }}>
                     Total Recipients
@@ -677,7 +740,7 @@ const Ayuda = () => {
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
                   <LocalShipping sx={{ fontSize: 40, color: '#F39C12', mb: 1 }} />
                   <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
-                    0
+                    {benefits.reduce((sum, benefit) => sum + (benefit.pending || 0), 0)}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 500 }}>
                     Pending Distribution
@@ -699,7 +762,7 @@ const Ayuda = () => {
                 <CardContent sx={{ textAlign: 'center', p: 3 }}>
                   <VolunteerActivism sx={{ fontSize: 40, color: '#9B59B6', mb: 1 }} />
                   <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
-                    0
+                    {benefits.filter(benefit => benefit.status === 'Active').length}
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 500 }}>
                     Active Programs
@@ -899,15 +962,28 @@ const Ayuda = () => {
                       </TableCell>
                       <TableCell sx={{ color: '#2C3E50' }}>{row.barangay}</TableCell>
                       <TableCell>
-                        <IconButton 
-                          size="small" 
-                          sx={{ 
-                            color: '#3498DB', 
-                            '&:hover': { bgcolor: '#E8F4FD' } 
-                          }}
-                        >
-                          <Visibility />
-                        </IconButton>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <IconButton 
+                            size="small" 
+                            sx={{ 
+                              color: '#3498DB', 
+                              '&:hover': { bgcolor: '#E8F4FD' } 
+                            }}
+                            title="View Details"
+                          >
+                            <Visibility />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            sx={{ 
+                              color: '#E74C3C', 
+                              '&:hover': { bgcolor: 'rgba(231, 76, 60, 0.1)' } 
+                            }}
+                            title="Delete Distribution Record"
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1104,7 +1180,7 @@ const Ayuda = () => {
                           <Typography variant="caption" sx={{ color: '#7F8C8D', display: 'block', mb: 2, fontWeight: 500 }}>
                             Submitted: {new Date(schedule.submittedDate).toLocaleDateString()}
                           </Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 'auto' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto', gap: 1 }}>
                             <Button
                               variant="contained"
                               startIcon={<Approval />}
@@ -1119,11 +1195,25 @@ const Ayuda = () => {
                                 px: 3,
                                 py: 1,
                                 borderRadius: 2,
+                                flex: 1,
                                 '&:hover': { bgcolor: '#229954' } 
                               }}
                             >
                               Review & Approve
                             </Button>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDeletePendingSchedule(schedule.id)}
+                              sx={{ 
+                                color: '#E74C3C', 
+                                '&:hover': { bgcolor: 'rgba(231, 76, 60, 0.1)' },
+                                border: '1px solid #E74C3C',
+                                borderRadius: 1
+                              }}
+                              title="Delete Pending Schedule"
+                            >
+                              <Delete />
+                            </IconButton>
                           </Box>
                         </CardContent>
                       </Card>

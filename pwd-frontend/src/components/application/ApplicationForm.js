@@ -152,16 +152,13 @@ function ApplicationForm() {
         emergencyRelationship: formData.emergencyRelationship,
         idType: 'PWD ID', // Default value
         idNumber: 'TEMP-' + Date.now(), // Temporary ID
-        medicalCertificate: formData.medicalCertificate,
-        barangayClearance: formData.barangayClearance,
-        idPicture: formData.idPicture,
         submissionDate: new Date().toISOString().split('T')[0], // Current date
       };
 
       // Check for required fields - only the fields that backend expects
       const requiredFields = [
         'firstName', 'lastName', 'birthDate', 'gender', 'disabilityType', 
-        'address', 'email', 'contactNumber'
+        'address', 'email', 'contactNumber', 'idType', 'idNumber'
       ];
       const missingFields = requiredFields.filter(field => !fieldMapping[field]);
       
@@ -170,18 +167,26 @@ function ApplicationForm() {
         return;
       }
 
-      // Check for required files (optional for testing)
-      if (!formData.medicalCertificate || !formData.barangayClearance) {
-        console.log('Files are optional for testing');
-      }
-
+      // Add all form fields to FormData
       Object.keys(fieldMapping).forEach(key => {
-        // Send all fields, including empty ones for optional fields
-        // Only exclude null values for file uploads
-        if (fieldMapping[key] !== null) {
+        if (fieldMapping[key] !== null && fieldMapping[key] !== '') {
           formDataToSend.append(key, fieldMapping[key]);
         }
       });
+
+      // Add file uploads to FormData
+      if (formData.idPicture) {
+        formDataToSend.append('idPicture', formData.idPicture);
+      }
+      if (formData.medicalCertificate) {
+        formDataToSend.append('medicalCertificate', formData.medicalCertificate);
+      }
+      if (formData.barangayClearance) {
+        formDataToSend.append('barangayClearance', formData.barangayClearance);
+      }
+
+      // Debug: Log what we're sending
+      console.log('Sending FormData with fields:', Object.fromEntries(formDataToSend.entries()));
 
       const response = await applicationService.create(formDataToSend);
 
@@ -218,11 +223,18 @@ function ApplicationForm() {
     } catch (error) {
       console.error('Error submitting application:', error);
       const data = error.data || {};
-      if (data.errors) {
+      console.log('Error data:', data);
+      
+      if (data.messages) {
+        const errorMessages = Object.values(data.messages).flat().join('\n');
+        alert(`Validation errors:\n${errorMessages}`);
+      } else if (data.errors) {
         const errorMessages = Object.values(data.errors).flat().join('\n');
         alert(`Validation errors:\n${errorMessages}`);
       } else if (data.message) {
         alert(`Error: ${data.message}`);
+      } else if (error.message) {
+        alert(`Error: ${error.message}`);
       } else {
         alert('Error submitting application. Please try again.');
       }

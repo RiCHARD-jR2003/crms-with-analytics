@@ -1,0 +1,268 @@
+import React from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  IconButton,
+  Alert
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  QrCode as QrCodeIcon,
+  Person as PersonIcon,
+  CameraAlt as CameraIcon
+} from '@mui/icons-material';
+import QRCode from 'qrcode';
+
+const QRCodeDisplay = ({ open, onClose, member, onScan }) => {
+  const [qrCodeDataURL, setQrCodeDataURL] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    if (member && open) {
+      generateQRCode();
+    }
+  }, [member, open]);
+
+  const generateQRCode = async () => {
+    try {
+      if (!member) return;
+
+      // Create QR code data with member information
+      const qrData = {
+        pwd_id: member.pwd_id || `PWD-${member.userID}`,
+        userID: member.userID,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        middleName: member.middleName,
+        birthDate: member.birthDate,
+        disabilityType: member.disabilityType,
+        barangay: member.barangay,
+        timestamp: new Date().toISOString()
+      };
+
+      // Generate QR code
+      const qrCodeURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#2C3E50',
+          light: '#FFFFFF'
+        }
+      });
+
+      setQrCodeDataURL(qrCodeURL);
+      setError(null);
+    } catch (err) {
+      console.error('Error generating QR code:', err);
+      setError('Failed to generate QR code');
+    }
+  };
+
+  const handleScanClick = () => {
+    if (onScan) {
+      onScan(member);
+    }
+  };
+
+  const handleClose = () => {
+    setQrCodeDataURL(null);
+    setError(null);
+    onClose();
+  };
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          bgcolor: 'white'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        pb: 1,
+        borderBottom: '2px solid #E8F4FD'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <QrCodeIcon sx={{ mr: 1, color: '#2C3E50' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+            PWD Member QR Code
+          </Typography>
+        </Box>
+        <IconButton 
+          onClick={handleClose}
+          sx={{ color: '#2C3E50' }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent sx={{ p: 3 }}>
+        {error ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        ) : member ? (
+          <Box>
+            {/* Member Information */}
+            <Card sx={{ mb: 3, border: '1px solid #E0E0E0' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <PersonIcon sx={{ color: '#2C3E50', mr: 1 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                    Member Information
+                  </Typography>
+                </Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      PWD ID
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {member.pwd_id || `PWD-${member.userID}`}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Full Name
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {`${member.firstName} ${member.middleName || ''} ${member.lastName}`.trim()}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Birth Date
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {member.birthDate ? new Date(member.birthDate).toLocaleDateString() : 'Not provided'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Disability Type
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {member.disabilityType || 'Not specified'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">
+                      Barangay
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {member.barangay || 'Not specified'}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+
+            {/* QR Code Display */}
+            <Card sx={{ border: '1px solid #E0E0E0', textAlign: 'center' }}>
+              <CardContent sx={{ p: 4 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 3 }}>
+                  QR Code for Benefit Claims
+                </Typography>
+                
+                {qrCodeDataURL ? (
+                  <Box sx={{ mb: 3 }}>
+                    <img 
+                      src={qrCodeDataURL} 
+                      alt="PWD Member QR Code"
+                      style={{
+                        width: '250px',
+                        height: '250px',
+                        border: '2px solid #E0E0E0',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        backgroundColor: 'white'
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <Box sx={{ 
+                    width: '250px', 
+                    height: '250px', 
+                    border: '2px dashed #E0E0E0',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto',
+                    mb: 3
+                  }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Generating QR Code...
+                    </Typography>
+                  </Box>
+                )}
+
+                <Typography variant="body2" sx={{ color: '#7F8C8D', mb: 2 }}>
+                  This QR code contains the member's information for benefit claim verification.
+                </Typography>
+                
+                <Typography variant="caption" sx={{ color: '#95A5A6', display: 'block' }}>
+                  💡 Scan this QR code with the benefit claim scanner to verify member identity
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        ) : null}
+      </DialogContent>
+
+      <DialogActions sx={{ p: 3, pt: 0 }}>
+        <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+          <Button
+            onClick={handleScanClick}
+            variant="contained"
+            startIcon={<CameraIcon />}
+            sx={{
+              bgcolor: '#E67E22',
+              '&:hover': { bgcolor: '#D35400' },
+              px: 3,
+              py: 1.5,
+              borderRadius: 2,
+              fontWeight: 600,
+              textTransform: 'none'
+            }}
+          >
+            Open Scanner
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button
+            onClick={handleClose}
+            variant="outlined"
+            sx={{
+              borderColor: '#2C3E50',
+              color: '#2C3E50',
+              '&:hover': {
+                borderColor: '#34495E',
+                backgroundColor: 'rgba(44, 62, 80, 0.1)'
+              }
+            }}
+          >
+            Close
+          </Button>
+        </Box>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default QRCodeDisplay;

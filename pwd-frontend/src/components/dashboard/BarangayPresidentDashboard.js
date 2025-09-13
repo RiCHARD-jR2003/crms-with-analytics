@@ -84,20 +84,17 @@ function BarangayPresidentDashboard() {
         setError(null);
         
         // Fetch PWD members statistics
-        const pwdResponse = await api.get('/pwd-members');
-        const pwdMembers = pwdResponse.data || [];
+        const pwdResponse = await api.get('/mock-pwd');
+        const pwdMembers = pwdResponse.members || [];
         
-        // Filter by barangay if user has barangay info
-        const barangayMembers = currentUser?.barangay 
-          ? pwdMembers.filter(member => member.barangay === currentUser.barangay)
-          : pwdMembers;
+        // Fetch applications directly from API for recent applications
+        const applicationsResponse = await api.get('/applications');
+        const applications = applicationsResponse || [];
         
-        // Fetch applications using dashboardService
-        const applicationsResponse = await dashboardService.getApplications();
-        const applications = applicationsResponse.data || [];
-        const barangayApplications = currentUser?.barangay 
-          ? applications.filter(app => app.barangay === currentUser.barangay)
-          : applications;
+        // Filter by barangay - use user's barangay or default to Mamatid for testing
+        const targetBarangay = currentUser?.barangay || 'Mamatid';
+        const barangayMembers = pwdMembers.filter(member => member.barangay === targetBarangay);
+        const barangayApplications = applications.filter(app => app.barangay === targetBarangay);
         
         // Fetch announcements
         const announcementsResponse = await api.get('/announcements');
@@ -105,8 +102,8 @@ function BarangayPresidentDashboard() {
         
         setStats({
           totalPWDMembers: barangayMembers.length,
-          pendingApplications: barangayApplications.filter(app => app.status === 'pending').length,
-          approvedApplications: barangayApplications.filter(app => app.status === 'approved').length,
+          pendingApplications: barangayApplications.filter(app => app.status === 'Pending Barangay Approval').length,
+          approvedApplications: barangayApplications.filter(app => app.status === 'Approved').length,
           activeMembers: barangayMembers.filter(member => member.status === 'active').length
         });
         
@@ -126,9 +123,10 @@ function BarangayPresidentDashboard() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'approved': return '#27AE60';
-      case 'pending': return '#F39C12';
-      case 'rejected': return '#E74C3C';
+      case 'Approved': return '#27AE60';
+      case 'Pending Barangay Approval': return '#F39C12';
+      case 'Pending Admin Approval': return '#3498DB';
+      case 'Rejected': return '#E74C3C';
       case 'active': return '#27AE60';
       case 'inactive': return '#000000';
       default: return '#000000';
@@ -158,7 +156,7 @@ function BarangayPresidentDashboard() {
                 Barangay President Dashboard
               </Typography>
               <Typography variant="body2" sx={{ color: '#000000' }}>
-                Welcome, {currentUser?.username || 'Barangay President'} • {currentUser?.barangay || 'Your Barangay'}
+                Welcome, {currentUser?.username || 'Barangay President'} • {currentUser?.barangay || 'Mamatid'}
               </Typography>
             </Box>
           </Box>

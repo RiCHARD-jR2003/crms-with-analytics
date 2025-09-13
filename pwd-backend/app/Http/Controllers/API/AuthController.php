@@ -99,14 +99,26 @@ class AuthController extends Controller
 
         // Load role-specific data
         if ($user->role === 'PWDMember') {
-            $user->load('pwdMember');
-            // Get barangay from approved application
-            $approvedApplication = $user->pwdMember->applications()
-                ->where('status', 'Approved')
-                ->latest()
-                ->first();
-            if ($approvedApplication) {
-                $user->barangay = $approvedApplication->barangay;
+            // Check if pwdMember relationship exists
+            if ($user->pwdMember) {
+                $user->load('pwdMember');
+                // Get barangay from approved application
+                $approvedApplication = $user->pwdMember->applications()
+                    ->where('status', 'Approved')
+                    ->latest()
+                    ->first();
+                if ($approvedApplication) {
+                    $user->barangay = $approvedApplication->barangay;
+                }
+            } else {
+                // If no pwdMember relationship, get barangay from application
+                $approvedApplication = \App\Models\Application::where('email', $user->email)
+                    ->where('status', 'Approved')
+                    ->latest()
+                    ->first();
+                if ($approvedApplication) {
+                    $user->barangay = $approvedApplication->barangay;
+                }
             }
         } else if ($user->role === 'BarangayPresident') {
             $user->load('barangayPresident');
