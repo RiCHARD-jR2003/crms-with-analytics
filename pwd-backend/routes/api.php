@@ -14,17 +14,93 @@ use App\Http\Controllers\API\AuditLogController;
 use App\Http\Controllers\API\SupportTicketController;
 use App\Http\Controllers\API\DashboardController;
 use App\Http\Controllers\API\GmailController;
+use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\DashboardController as MainDashboardController;
 
-// Test route
-Route::get('/test', function () {
-    return response()->json([
-        'message' => 'API is working',
-        'timestamp' => now()->toISOString(),
-        'server_ip' => request()->server('SERVER_ADDR'),
-        'client_ip' => request()->ip(),
-        'user_agent' => request()->userAgent()
-    ]);
+// Language routes
+Route::prefix('language')->group(function () {
+    Route::post('/change', [LanguageController::class, 'changeLanguage']);
+    Route::get('/current', [LanguageController::class, 'getCurrentLanguage']);
+    Route::get('/supported', [LanguageController::class, 'getSupportedLanguages']);
 });
+
+// Google Translate routes
+Route::prefix('translate')->group(function () {
+    Route::post('/', [TranslateController::class, 'translate']);
+    Route::post('/batch', [TranslateController::class, 'translateBatch']);
+    Route::post('/detect', [TranslateController::class, 'detectLanguage']);
+    Route::post('/section', [TranslateController::class, 'translateSection']);
+});
+
+// Public Dashboard routes (working)
+Route::get('/dashboard-stats', [MainDashboardController::class, 'getDashboardStats']);
+Route::get('/dashboard-monthly', [MainDashboardController::class, 'getMonthlyStats']);
+Route::get('/dashboard-activities', [MainDashboardController::class, 'getRecentActivities']);
+Route::get('/dashboard-coordination', [MainDashboardController::class, 'getBarangayCoordination']);
+
+
+
+
+
+
+// Get applications by status
+Route::get('/applications/status/{status}', function ($status) {
+    try {
+        $applications = \App\Models\Application::where('status', urldecode($status))->get();
+        
+        return response()->json($applications);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+// PWD Members fallback route (when pwd_member table doesn't exist)
+Route::get('/pwd-members-fallback', function () {
+    try {
+        // Get approved applications as PWD members
+        $approvedApplications = \App\Models\Application::where('status', 'Approved')->get();
+        
+        $members = $approvedApplications->map(function ($app) {
+            return [
+                'id' => $app->applicationID,
+                'userID' => $app->applicationID,
+                'firstName' => $app->firstName,
+                'lastName' => $app->lastName,
+                'middleName' => $app->middleName,
+                'birthDate' => $app->birthDate,
+                'gender' => $app->gender,
+                'disabilityType' => $app->disabilityType,
+                'address' => $app->address,
+                'contactNumber' => $app->contactNumber,
+                'email' => $app->email,
+                'barangay' => $app->barangay,
+                'emergencyContact' => $app->emergencyContact,
+                'emergencyPhone' => $app->emergencyPhone,
+                'emergencyRelationship' => $app->emergencyRelationship,
+                'status' => 'Active',
+                'created_at' => $app->created_at,
+                'updated_at' => $app->updated_at
+            ];
+        });
+        
+        return response()->json([
+            'success' => true,
+            'members' => $members,
+            'count' => $members->count(),
+            'source' => 'approved_applications'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch PWD members',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
 
 // Database and email test route
 Route::get('/test-database-email', function () {
@@ -219,8 +295,17 @@ Route::post('/test-application-submission', function (Request $request) {
             'gender' => 'required|string|max:10',
             'idType' => 'required|string|max:50',
             'idNumber' => 'required|string|max:50',
+            // Document validation rules
             'idPicture' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
             'medicalCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'clinicalAbstract' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'voterCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'idPicture_0' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'idPicture_1' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'birthCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'wholeBodyPicture' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'affidavit' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'barangayCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'barangayClearance' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
         ]);
 
@@ -245,22 +330,79 @@ Route::post('/test-application-submission', function (Request $request) {
         if ($request->hasFile('idPicture')) {
             $idPictureFile = $request->file('idPicture');
             $idPictureName = 'id_picture_' . time() . '.' . $idPictureFile->getClientOriginalExtension();
-            $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName);
+            $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName, 'public');
             $data['idPicture'] = $idPicturePath;
         }
 
         if ($request->hasFile('medicalCertificate')) {
             $medicalFile = $request->file('medicalCertificate');
             $medicalName = 'medical_cert_' . time() . '.' . $medicalFile->getClientOriginalExtension();
-            $medicalPath = $medicalFile->storeAs($uploadPath, $medicalName);
+            $medicalPath = $medicalFile->storeAs($uploadPath, $medicalName, 'public');
             $data['medicalCertificate'] = $medicalPath;
         }
 
         if ($request->hasFile('barangayClearance')) {
             $clearanceFile = $request->file('barangayClearance');
             $clearanceName = 'barangay_clearance_' . time() . '.' . $clearanceFile->getClientOriginalExtension();
-            $clearancePath = $clearanceFile->storeAs($uploadPath, $clearanceName);
+            $clearancePath = $clearanceFile->storeAs($uploadPath, $clearanceName, 'public');
             $data['barangayClearance'] = $clearancePath;
+        }
+
+        // Handle new document fields
+        if ($request->hasFile('clinicalAbstract')) {
+            $clinicalFile = $request->file('clinicalAbstract');
+            $clinicalName = 'clinical_abstract_' . time() . '.' . $clinicalFile->getClientOriginalExtension();
+            $clinicalPath = $clinicalFile->storeAs($uploadPath, $clinicalName, 'public');
+            $data['clinicalAbstract'] = $clinicalPath;
+        }
+
+        if ($request->hasFile('voterCertificate')) {
+            $voterFile = $request->file('voterCertificate');
+            $voterName = 'voter_certificate_' . time() . '.' . $voterFile->getClientOriginalExtension();
+            $voterPath = $voterFile->storeAs($uploadPath, $voterName, 'public');
+            $data['voterCertificate'] = $voterPath;
+        }
+
+        // Handle multiple ID pictures
+        $idPictures = [];
+        for ($i = 0; $i < 2; $i++) {
+            if ($request->hasFile("idPicture_$i")) {
+                $idPictureFile = $request->file("idPicture_$i");
+                $idPictureName = "id_picture_{$i}_" . time() . '.' . $idPictureFile->getClientOriginalExtension();
+                $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName, 'public');
+                $idPictures[] = $idPicturePath;
+            }
+        }
+        if (!empty($idPictures)) {
+            $data['idPictures'] = json_encode($idPictures);
+        }
+
+        if ($request->hasFile('birthCertificate')) {
+            $birthFile = $request->file('birthCertificate');
+            $birthName = 'birth_certificate_' . time() . '.' . $birthFile->getClientOriginalExtension();
+            $birthPath = $birthFile->storeAs($uploadPath, $birthName, 'public');
+            $data['birthCertificate'] = $birthPath;
+        }
+
+        if ($request->hasFile('wholeBodyPicture')) {
+            $wholeBodyFile = $request->file('wholeBodyPicture');
+            $wholeBodyName = 'whole_body_picture_' . time() . '.' . $wholeBodyFile->getClientOriginalExtension();
+            $wholeBodyPath = $wholeBodyFile->storeAs($uploadPath, $wholeBodyName, 'public');
+            $data['wholeBodyPicture'] = $wholeBodyPath;
+        }
+
+        if ($request->hasFile('affidavit')) {
+            $affidavitFile = $request->file('affidavit');
+            $affidavitName = 'affidavit_' . time() . '.' . $affidavitFile->getClientOriginalExtension();
+            $affidavitPath = $affidavitFile->storeAs($uploadPath, $affidavitName, 'public');
+            $data['affidavit'] = $affidavitPath;
+        }
+
+        if ($request->hasFile('barangayCertificate')) {
+            $barangayCertFile = $request->file('barangayCertificate');
+            $barangayCertName = 'barangay_certificate_' . time() . '.' . $barangayCertFile->getClientOriginalExtension();
+            $barangayCertPath = $barangayCertFile->storeAs($uploadPath, $barangayCertName, 'public');
+            $data['barangayCertificate'] = $barangayCertPath;
         }
 
         \Illuminate\Support\Facades\Log::info('Creating application with data', [
@@ -331,28 +473,65 @@ Route::get('/simple-pwd', function () {
     }
 });
 
+// Debug PWD members and applications
+Route::get('/debug-pwd-applications', function () {
+    try {
+        $members = \App\Models\PWDMember::all();
+        $applications = \App\Models\Application::where('status', 'Approved')->get();
+        
+        $debug = [
+            'pwd_members' => $members->map(function($member) {
+                return [
+                    'id' => $member->id,
+                    'userID' => $member->userID,
+                    'name' => $member->firstName . ' ' . $member->lastName
+                ];
+            }),
+            'approved_applications' => $applications->map(function($app) {
+                return [
+                    'applicationID' => $app->applicationID,
+                    'pwdID' => $app->pwdID,
+                    'name' => $app->firstName . ' ' . $app->lastName,
+                    'barangay' => $app->barangay
+                ];
+            })
+        ];
+        
+        return response()->json($debug);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
 // PWD members route - Returns real database data with emergency contact
 Route::get('/mock-pwd', function () {
     try {
-        $members = \App\Models\PWDMember::with(['applications' => function($query) {
-            $query->where('status', 'Approved')->latest();
-        }])->get();
+        $members = \App\Models\PWDMember::all();
         
         // Transform the data to match the expected format
         $transformedMembers = $members->map(function ($member) {
             // Get emergency contact and barangay from the approved application
-            $approvedApplication = $member->applications->first();
-            $emergencyContact = $approvedApplication ? $approvedApplication->emergencyContact : null;
-            $barangay = $approvedApplication ? $approvedApplication->barangay : null;
+            // Match pwdID in applications to the PWD member's userID field
+            $approvedApplication = \App\Models\Application::where('pwdID', $member->userID)
+                ->where('status', 'Approved')
+                ->latest()
+                ->first();
+            
+            $emergencyContact = $approvedApplication ? $approvedApplication->emergencyContact : $member->emergencyContact;
+            $barangay = $approvedApplication ? $approvedApplication->barangay : $member->barangay;
+            $idPictures = $approvedApplication ? $approvedApplication->idPictures : null;
             
             // Get email from the User table
             $user = \App\Models\User::where('userID', $member->userID)->first();
-            $email = $user ? $user->email : null;
+            $email = $user ? $user->email : $member->email;
+            
+            // Generate PWD ID if not exists
+            $pwdId = $member->pwd_id ?: 'PWD-' . str_pad($member->userID, 6, '0', STR_PAD_LEFT);
             
             return [
                 'id' => $member->id,
                 'userID' => $member->userID,
-                'pwd_id' => $member->pwd_id ?: "PWD-{$member->userID}",
+                'pwd_id' => $pwdId,
                 'firstName' => $member->firstName,
                 'lastName' => $member->lastName,
                 'middleName' => $member->middleName,
@@ -363,6 +542,7 @@ Route::get('/mock-pwd', function () {
                 'contactNumber' => $member->contactNumber,
                 'emergencyContact' => $emergencyContact,
                 'barangay' => $barangay,
+                'idPictures' => $idPictures,
                 'email' => $email,
                 'qr_code_data' => $member->qr_code_data,
                 'qr_code_generated_at' => $member->qr_code_generated_at
@@ -384,7 +564,6 @@ Route::get('/mock-pwd', function () {
 });
 
 Route::apiResource('users', 'App\Http\Controllers\API\UserController');
-Route::apiResource('pwd-members', 'App\Http\Controllers\API\PWDMemberController');
 Route::apiResource('complaints', 'App\Http\Controllers\API\ComplaintController');
 Route::apiResource('reports', 'App\Http\Controllers\API\ReportController');
 
@@ -563,37 +742,6 @@ Route::put('/pwd-member/profile', function (Request $request) {
     }
 });
 
-Route::put('/pwd-member/change-password', function (Request $request) {
-    try {
-        $user = $request->user();
-        if (!$user || $user->role !== 'PWDMember') {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'currentPassword' => 'required',
-            'newPassword' => 'required|min:6',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
-        }
-        
-        // Verify current password
-        if (!\Illuminate\Support\Facades\Hash::check($request->currentPassword, $user->password)) {
-            return response()->json(['error' => 'Current password is incorrect'], 400);
-        }
-        
-        // Update password
-        $user->update([
-            'password' => \Illuminate\Support\Facades\Hash::make($request->newPassword)
-        ]);
-        
-        return response()->json(['message' => 'Password changed successfully']);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()], 500);
-    }
-});
 
 // Public application submission route
 Route::post('/applications', function (Request $request) {
@@ -616,8 +764,17 @@ Route::post('/applications', function (Request $request) {
             'gender' => 'required|string|max:10',
             'idType' => 'required|string|max:50',
             'idNumber' => 'required|string|max:50',
+            // Document validation rules
             'idPicture' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
             'medicalCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'clinicalAbstract' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'voterCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'idPicture_0' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'idPicture_1' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'birthCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'wholeBodyPicture' => 'nullable|file|mimes:jpeg,png,jpg|max:2048',
+            'affidavit' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'barangayCertificate' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'barangayClearance' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
         ]);
 
@@ -642,22 +799,79 @@ Route::post('/applications', function (Request $request) {
         if ($request->hasFile('idPicture')) {
             $idPictureFile = $request->file('idPicture');
             $idPictureName = 'id_picture_' . time() . '.' . $idPictureFile->getClientOriginalExtension();
-            $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName);
+            $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName, 'public');
             $data['idPicture'] = $idPicturePath;
         }
 
         if ($request->hasFile('medicalCertificate')) {
             $medicalFile = $request->file('medicalCertificate');
             $medicalName = 'medical_cert_' . time() . '.' . $medicalFile->getClientOriginalExtension();
-            $medicalPath = $medicalFile->storeAs($uploadPath, $medicalName);
+            $medicalPath = $medicalFile->storeAs($uploadPath, $medicalName, 'public');
             $data['medicalCertificate'] = $medicalPath;
         }
 
         if ($request->hasFile('barangayClearance')) {
             $clearanceFile = $request->file('barangayClearance');
             $clearanceName = 'barangay_clearance_' . time() . '.' . $clearanceFile->getClientOriginalExtension();
-            $clearancePath = $clearanceFile->storeAs($uploadPath, $clearanceName);
+            $clearancePath = $clearanceFile->storeAs($uploadPath, $clearanceName, 'public');
             $data['barangayClearance'] = $clearancePath;
+        }
+
+        // Handle new document fields
+        if ($request->hasFile('clinicalAbstract')) {
+            $clinicalFile = $request->file('clinicalAbstract');
+            $clinicalName = 'clinical_abstract_' . time() . '.' . $clinicalFile->getClientOriginalExtension();
+            $clinicalPath = $clinicalFile->storeAs($uploadPath, $clinicalName, 'public');
+            $data['clinicalAbstract'] = $clinicalPath;
+        }
+
+        if ($request->hasFile('voterCertificate')) {
+            $voterFile = $request->file('voterCertificate');
+            $voterName = 'voter_certificate_' . time() . '.' . $voterFile->getClientOriginalExtension();
+            $voterPath = $voterFile->storeAs($uploadPath, $voterName, 'public');
+            $data['voterCertificate'] = $voterPath;
+        }
+
+        // Handle multiple ID pictures
+        $idPictures = [];
+        for ($i = 0; $i < 2; $i++) {
+            if ($request->hasFile("idPicture_$i")) {
+                $idPictureFile = $request->file("idPicture_$i");
+                $idPictureName = "id_picture_{$i}_" . time() . '.' . $idPictureFile->getClientOriginalExtension();
+                $idPicturePath = $idPictureFile->storeAs($uploadPath, $idPictureName, 'public');
+                $idPictures[] = $idPicturePath;
+            }
+        }
+        if (!empty($idPictures)) {
+            $data['idPictures'] = json_encode($idPictures);
+        }
+
+        if ($request->hasFile('birthCertificate')) {
+            $birthFile = $request->file('birthCertificate');
+            $birthName = 'birth_certificate_' . time() . '.' . $birthFile->getClientOriginalExtension();
+            $birthPath = $birthFile->storeAs($uploadPath, $birthName, 'public');
+            $data['birthCertificate'] = $birthPath;
+        }
+
+        if ($request->hasFile('wholeBodyPicture')) {
+            $wholeBodyFile = $request->file('wholeBodyPicture');
+            $wholeBodyName = 'whole_body_picture_' . time() . '.' . $wholeBodyFile->getClientOriginalExtension();
+            $wholeBodyPath = $wholeBodyFile->storeAs($uploadPath, $wholeBodyName, 'public');
+            $data['wholeBodyPicture'] = $wholeBodyPath;
+        }
+
+        if ($request->hasFile('affidavit')) {
+            $affidavitFile = $request->file('affidavit');
+            $affidavitName = 'affidavit_' . time() . '.' . $affidavitFile->getClientOriginalExtension();
+            $affidavitPath = $affidavitFile->storeAs($uploadPath, $affidavitName, 'public');
+            $data['affidavit'] = $affidavitPath;
+        }
+
+        if ($request->hasFile('barangayCertificate')) {
+            $barangayCertFile = $request->file('barangayCertificate');
+            $barangayCertName = 'barangay_certificate_' . time() . '.' . $barangayCertFile->getClientOriginalExtension();
+            $barangayCertPath = $barangayCertFile->storeAs($uploadPath, $barangayCertName, 'public');
+            $data['barangayCertificate'] = $barangayCertPath;
         }
 
         \Illuminate\Support\Facades\Log::info('Creating application with data', [
@@ -729,6 +943,39 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('pwd-members/{id}/applications', [PWDMemberController::class, 'getApplications']);
     Route::get('pwd-members/{id}/complaints', [PWDMemberController::class, 'getComplaints']);
     Route::get('pwd-members/{id}/benefit-claims', [PWDMemberController::class, 'getBenefitClaims']);
+    
+    // PWD Member change password route
+    Route::put('/pwd-member/change-password', function (Request $request) {
+        try {
+            $user = $request->user();
+            if (!$user || $user->role !== 'PWDMember') {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+            
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+                'currentPassword' => 'required',
+                'newPassword' => 'required|min:6',
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+            }
+            
+            // Verify current password
+            if (!\Illuminate\Support\Facades\Hash::check($request->currentPassword, $user->password)) {
+                return response()->json(['error' => 'Current password is incorrect'], 400);
+            }
+            
+            // Update password
+            $user->update([
+                'password' => \Illuminate\Support\Facades\Hash::make($request->newPassword)
+            ]);
+            
+            return response()->json(['message' => 'Password changed successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    });
     
     // Application routes are handled in RouteServiceProvider
     

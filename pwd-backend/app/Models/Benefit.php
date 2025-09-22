@@ -23,6 +23,7 @@ class Benefit extends Model
         'distributionDate',
         'expiryDate',
         'barangay',
+        'selectedBarangays',
         'quarter',
         'birthdayMonth',
         'status',
@@ -41,7 +42,8 @@ class Benefit extends Model
         'submittedDate' => 'datetime',
         'approvedDate' => 'datetime',
         'distributed' => 'integer',
-        'pending' => 'integer'
+        'pending' => 'integer',
+        'selectedBarangays' => 'array'
     ];
 
     // Relationships

@@ -48,13 +48,19 @@ const QRCodeDisplay = ({ open, onClose, member, onScan }) => {
         timestamp: new Date().toISOString()
       };
 
-      // Generate QR code
+      // Generate QR code with better mobile compatibility
       const qrCodeURL = await QRCode.toDataURL(JSON.stringify(qrData), {
-        width: 300,
-        margin: 2,
+        width: 400, // Increased size for better mobile scanning
+        margin: 4, // Increased margin
         color: {
-          dark: '#2C3E50',
-          light: '#FFFFFF'
+          dark: '#000000', // Pure black for better contrast
+          light: '#FFFFFF' // Pure white background
+        },
+        errorCorrectionLevel: 'M', // Medium error correction for better scanning
+        type: 'image/png',
+        quality: 0.92,
+        rendererOpts: {
+          quality: 0.92
         }
       });
 
@@ -186,12 +192,14 @@ const QRCodeDisplay = ({ open, onClose, member, onScan }) => {
                       src={qrCodeDataURL} 
                       alt="PWD Member QR Code"
                       style={{
-                        width: '250px',
-                        height: '250px',
+                        width: '350px',
+                        height: '350px',
                         border: '2px solid #E0E0E0',
                         borderRadius: '8px',
                         padding: '10px',
-                        backgroundColor: 'white'
+                        backgroundColor: 'white',
+                        maxWidth: '100%',
+                        height: 'auto'
                       }}
                     />
                   </Box>

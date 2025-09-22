@@ -6,10 +6,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #000000 !important;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 * {
   color: #000000 !important;
+  box-sizing: border-box; /* Include padding and border in element's total width and height */
 }
 
 .MuiTypography-root {
@@ -41,4 +43,164 @@ p, span, div, h1, h2, h3, h4, h5, h6 {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Screen reader only class for accessibility */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip links for accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Mobile Responsive Styles - Removed !important rules to allow Material-UI responsive behavior */
+@media (max-width: 768px) {
+  /* Touch-friendly minimum sizes */
+  .MuiButton-root {
+    min-height: 44px; /* Touch-friendly minimum size */
+  }
+  
+  /* Paper adjustments */
+  .MuiPaper-root {
+    margin: 4px;
+  }
+  
+  /* Dialog adjustments for mobile */
+  .MuiDialog-paper {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+    max-width: calc(100vw - 32px);
+  }
+  
+  /* Form control adjustments */
+  .MuiTextField-root {
+    margin-bottom: 16px;
+  }
+  
+  .MuiInputBase-root {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+  }
+  
+  /* Table adjustments for mobile - removed !important to allow Material-UI responsive behavior */
+}
+
+/* Tablet styles - removed !important rules to allow Material-UI responsive behavior */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Let Material-UI handle tablet responsiveness */
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch device styles */
+  .MuiButton-root {
+    min-height: 48px !important;
+    min-width: 48px !important;
+  }
+  
+  .MuiIconButton-root {
+    min-height: 48px !important;
+    min-width: 48px !important;
+  }
+  
+  .MuiFab-root {
+    min-height: 56px !important;
+    min-width: 56px !important;
+  }
+  
+  /* Increase touch targets */
+  .MuiListItem-root {
+    min-height: 48px !important;
+  }
+  
+  .MuiMenuItem-root {
+    min-height: 48px !important;
+  }
+  
+  /* Remove hover effects on touch devices */
+  .MuiButton-root:hover,
+  .MuiIconButton-root:hover,
+  .MuiCard-root:hover {
+    transform: none !important;
+    box-shadow: inherit !important;
+  }
+}
+
+/* Landscape mobile orientation */
+@media (max-width: 768px) and (orientation: landscape) {
+  .MuiTypography-h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .MuiTypography-h2 {
+    font-size: 1.3rem !important;
+  }
+  
+  .MuiTypography-h3 {
+    font-size: 1.1rem !important;
+  }
+  
+  .MuiDialog-paper {
+    max-height: calc(100vh - 16px) !important;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Ensure crisp text rendering on high DPI displays */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  /* Keep text black as per design requirements */
+  body, * {
+    color: #000000 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .MuiAppBar-root,
+  .MuiDrawer-root,
+  .MuiFab-root {
+    display: none !important;
+  }
 }

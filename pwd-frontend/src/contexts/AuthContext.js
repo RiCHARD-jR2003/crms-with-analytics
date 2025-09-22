@@ -43,11 +43,20 @@ export function AuthProvider({ children }) {
     // If user is a Barangay President, extract their barangay information
     if (user.role === 'BarangayPresident') {
       // The barangay information is already included in the login response
-      if (user.barangay_president && user.barangay_president.barangay) {
-        user.barangay = user.barangay_president.barangay;
+      if (user.barangayPresident && user.barangayPresident.barangay) {
+        user.barangay = user.barangayPresident.barangay;
       } else {
-        // Fallback if barangay info is not in the response
-        user.barangay = 'Barangay Poblacion';
+        // Fallback: extract barangay from username (e.g., bp_gulod -> Gulod)
+        const username = user.username || '';
+        if (username.startsWith('bp_')) {
+          const barangayName = username.replace('bp_', '').replace(/_/g, ' ');
+          // Capitalize first letter of each word
+          user.barangay = barangayName.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ');
+        } else {
+          user.barangay = 'Banlic'; // Default fallback
+        }
       }
     }
     

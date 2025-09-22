@@ -105,8 +105,12 @@ const BenefitTracking = () => {
           return benefit;
         });
         
-        const birthdayBenefits = migratedBenefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
-        const financialBenefits = migratedBenefits.filter(benefit => benefit.type === 'Financial Assistance');
+        const birthdayBenefits = migratedBenefits.filter(benefit => 
+          benefit.type === 'Birthday Cash Gift' && benefit.status === 'Active'
+        );
+        const financialBenefits = migratedBenefits.filter(benefit => 
+          benefit.type === 'Financial Assistance' && benefit.status === 'Active'
+        );
         setBirthdayBenefits(birthdayBenefits);
         setFinancialBenefits(financialBenefits);
         
@@ -124,8 +128,12 @@ const BenefitTracking = () => {
         if (savedBenefits && savedBenefits !== 'null' && savedBenefits !== 'undefined') {
           const benefits = JSON.parse(savedBenefits);
           if (Array.isArray(benefits)) {
-            const birthdayBenefits = benefits.filter(benefit => benefit.type === 'Birthday Cash Gift');
-            const financialBenefits = benefits.filter(benefit => benefit.type === 'Financial Assistance');
+            const birthdayBenefits = benefits.filter(benefit => 
+              benefit.type === 'Birthday Cash Gift' && benefit.status === 'Active'
+            );
+            const financialBenefits = benefits.filter(benefit => 
+              benefit.type === 'Financial Assistance' && benefit.status === 'Active'
+            );
             setBirthdayBenefits(birthdayBenefits);
             setFinancialBenefits(financialBenefits);
           }
@@ -143,7 +151,7 @@ const BenefitTracking = () => {
   // Fetch benefit claims from database
   const fetchBenefitClaims = async (benefitId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/benefit-claims/${benefitId}`);
+      const response = await fetch(`http://192.168.18.25:8000/api/benefit-claims/${benefitId}`);
       if (response.ok) {
         const claims = await response.json();
         return claims;
@@ -178,23 +186,18 @@ const BenefitTracking = () => {
         return eligibleMonths.includes(birthMonth);
       });
     }
-    // For Financial Assistance benefits, filter by month if specified
-    else if (benefit.type === 'Financial Assistance' && benefit.quarter) {
-      const monthMap = {
-        'January': 1, 'February': 2, 'March': 3, 'April': 4,
-        'May': 5, 'June': 6, 'July': 7, 'August': 8,
-        'September': 9, 'October': 10, 'November': 11, 'December': 12
-      };
-      
-      const targetMonth = monthMap[benefit.quarter];
-      
-      eligibleMembers = pwdMembers.filter(member => {
-        if (!member.birthDate) return false;
-        const birthMonth = new Date(member.birthDate).getMonth() + 1;
-        return birthMonth === targetMonth;
-      });
+    // For Financial Assistance benefits, filter by selected barangays
+    else if (benefit.type === 'Financial Assistance') {
+      if (benefit.selectedBarangays && benefit.selectedBarangays.length > 0) {
+        eligibleMembers = pwdMembers.filter(member => {
+          return benefit.selectedBarangays.includes(member.barangay);
+        });
+      } else {
+        // If no specific barangays selected, return all members
+        eligibleMembers = pwdMembers;
+      }
     }
-    // For other benefit types or if no specific filtering, return all members
+    // For other benefit types, return all members
     else {
       eligibleMembers = pwdMembers;
     }
@@ -303,7 +306,7 @@ const BenefitTracking = () => {
       loadBirthdayBenefits();
       
       // Show success message
-      alert(`Benefit "${result.benefit.title || result.benefit.name}" ${result.status} for ${result.member.firstName} ${result.member.lastName}!`);
+      alert(`Benefit "${result.benefit.title || result.benefit.benefitType || result.benefit.type || 'Unknown Benefit'}" ${result.status} for ${result.member.firstName} ${result.member.lastName}!`);
     }
   };
 
@@ -1656,7 +1659,7 @@ const BenefitTracking = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <CakeIcon sx={{ color: '#2C3E50', mr: 1 }} />
                               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
-                                {benefit.title || benefit.name}
+                                {benefit.title || benefit.benefitType || benefit.type}
                               </Typography>
                             </Box>
                             <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
@@ -1666,7 +1669,10 @@ const BenefitTracking = () => {
                               {benefit.description}
                             </Typography>
                             <Chip 
-                              label={benefit.type === 'Birthday Cash Gift' ? getQuarterName(benefit.birthdayMonth) : benefit.quarter || 'All Months'} 
+                              label={benefit.type === 'Birthday Cash Gift' ? getQuarterName(benefit.birthdayMonth) : 
+                                     benefit.type === 'Financial Assistance' ? 
+                                       (benefit.selectedBarangays && benefit.selectedBarangays.length > 0 ? benefit.selectedBarangays.join(', ') : 'All Barangays') :
+                                       benefit.quarter || 'All Months'} 
                               size="small" 
                               sx={{ 
                                 bgcolor: '#F5F5F5', 
@@ -1700,7 +1706,10 @@ const BenefitTracking = () => {
                         Eligible Beneficiaries for {selectedBenefit.title || selectedBenefit.name}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                        {getQuarterName(selectedBenefit.birthdayMonth)} • {eligibleBeneficiaries.length} eligible members
+                        {selectedBenefit.type === 'Birthday Cash Gift' ? getQuarterName(selectedBenefit.birthdayMonth) : 
+                         selectedBenefit.type === 'Financial Assistance' ? 
+                           (selectedBenefit.selectedBarangays && selectedBenefit.selectedBarangays.length > 0 ? selectedBenefit.selectedBarangays.join(', ') : 'All Barangays') :
+                           selectedBenefit.quarter || 'All Months'} • {eligibleBeneficiaries.length} eligible members
                       </Typography>
                     </Box>
                     
@@ -1720,6 +1729,7 @@ const BenefitTracking = () => {
                             <TableCell>Full Name</TableCell>
                             <TableCell>Birth Month</TableCell>
                             <TableCell>Age</TableCell>
+                            <TableCell>Barangay</TableCell>
                             <TableCell>Disability Type</TableCell>
                             <TableCell>Claim Status</TableCell>
                             <TableCell>Claim Date</TableCell>
@@ -1728,13 +1738,16 @@ const BenefitTracking = () => {
                         <TableBody>
                           {eligibleBeneficiaries.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                              <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                                 <Box sx={{ textAlign: 'center' }}>
                                   <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
                                     No eligible beneficiaries found
                                   </Typography>
                                   <Typography variant="body2" color="text.secondary">
-                                    No PWD members have birthdays in {getQuarterName(selectedBenefit.birthdayMonth)}
+                                    No PWD members have birthdays in {selectedBenefit.type === 'Birthday Cash Gift' ? getQuarterName(selectedBenefit.birthdayMonth) : 
+                           selectedBenefit.type === 'Financial Assistance' ? 
+                             (selectedBenefit.selectedBarangays && selectedBenefit.selectedBarangays.length > 0 ? selectedBenefit.selectedBarangays.join(', ') : 'All Barangays') :
+                             selectedBenefit.quarter || 'All Months'}
                                   </Typography>
                                 </Box>
                               </TableCell>
@@ -1769,6 +1782,9 @@ const BenefitTracking = () => {
                                   <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
                                     {getAge(member.birthDate)}
                                   </Typography>
+                                </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  {member.barangay || 'Not specified'}
                                 </TableCell>
                                 <TableCell sx={{ color: '#2C3E50' }}>
                                   {member.disabilityType || 'Not specified'}
@@ -2056,7 +2072,7 @@ const BenefitTracking = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <CakeIcon sx={{ color: '#2C3E50', mr: 1 }} />
                               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
-                                {benefit.title || benefit.name}
+                                {benefit.title || benefit.benefitType || benefit.type}
                               </Typography>
                             </Box>
                             <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
@@ -2066,7 +2082,10 @@ const BenefitTracking = () => {
                               {benefit.description}
                             </Typography>
                             <Chip 
-                              label={benefit.type === 'Birthday Cash Gift' ? getQuarterName(benefit.birthdayMonth) : benefit.quarter || 'All Months'} 
+                              label={benefit.type === 'Birthday Cash Gift' ? getQuarterName(benefit.birthdayMonth) : 
+                                     benefit.type === 'Financial Assistance' ? 
+                                       (benefit.selectedBarangays && benefit.selectedBarangays.length > 0 ? benefit.selectedBarangays.join(', ') : 'All Barangays') :
+                                       benefit.quarter || 'All Months'} 
                               size="small" 
                               sx={{ 
                                 bgcolor: '#F5F5F5', 
@@ -2100,7 +2119,10 @@ const BenefitTracking = () => {
                         Eligible Beneficiaries for {selectedBenefit.title || selectedBenefit.name}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                        {getQuarterName(selectedBenefit.birthdayMonth)} • {eligibleBeneficiaries.length} eligible members
+                        {selectedBenefit.type === 'Birthday Cash Gift' ? getQuarterName(selectedBenefit.birthdayMonth) : 
+                         selectedBenefit.type === 'Financial Assistance' ? 
+                           (selectedBenefit.selectedBarangays && selectedBenefit.selectedBarangays.length > 0 ? selectedBenefit.selectedBarangays.join(', ') : 'All Barangays') :
+                           selectedBenefit.quarter || 'All Months'} • {eligibleBeneficiaries.length} eligible members
                       </Typography>
                     </Box>
                     
@@ -2120,6 +2142,7 @@ const BenefitTracking = () => {
                             <TableCell>Full Name</TableCell>
                             <TableCell>Birth Month</TableCell>
                             <TableCell>Age</TableCell>
+                            <TableCell>Barangay</TableCell>
                             <TableCell>Disability Type</TableCell>
                             <TableCell>Claim Status</TableCell>
                             <TableCell>Claim Date</TableCell>
@@ -2128,13 +2151,16 @@ const BenefitTracking = () => {
                         <TableBody>
                           {eligibleBeneficiaries.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                              <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                                 <Box sx={{ textAlign: 'center' }}>
                                   <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
                                     No eligible beneficiaries found
                                   </Typography>
                                   <Typography variant="body2" color="text.secondary">
-                                    No PWD members have birthdays in {getQuarterName(selectedBenefit.birthdayMonth)}
+                                    No PWD members have birthdays in {selectedBenefit.type === 'Birthday Cash Gift' ? getQuarterName(selectedBenefit.birthdayMonth) : 
+                           selectedBenefit.type === 'Financial Assistance' ? 
+                             (selectedBenefit.selectedBarangays && selectedBenefit.selectedBarangays.length > 0 ? selectedBenefit.selectedBarangays.join(', ') : 'All Barangays') :
+                             selectedBenefit.quarter || 'All Months'}
                                   </Typography>
                                 </Box>
                               </TableCell>
@@ -2169,6 +2195,9 @@ const BenefitTracking = () => {
                                   <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#2C3E50' }}>
                                     {getAge(member.birthDate)}
                                   </Typography>
+                                </TableCell>
+                                <TableCell sx={{ color: '#2C3E50' }}>
+                                  {member.barangay || 'Not specified'}
                                 </TableCell>
                                 <TableCell sx={{ color: '#2C3E50' }}>
                                   {member.disabilityType || 'Not specified'}

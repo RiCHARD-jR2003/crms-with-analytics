@@ -13,9 +13,16 @@ class PWDMemberController extends Controller
     {
         try {
             $members = PWDMember::all();
-            return response()->json($members);
+            return response()->json([
+                'success' => true,
+                'data' => $members,
+                'count' => $members->count()
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

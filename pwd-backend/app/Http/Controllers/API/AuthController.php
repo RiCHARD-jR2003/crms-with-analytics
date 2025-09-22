@@ -102,32 +102,101 @@ class AuthController extends Controller
             // Check if pwdMember relationship exists
             if ($user->pwdMember) {
                 $user->load('pwdMember');
-                // Get barangay from approved application
+                // Get barangay and idPictures from approved application
                 $approvedApplication = $user->pwdMember->applications()
                     ->where('status', 'Approved')
                     ->latest()
                     ->first();
                 if ($approvedApplication) {
                     $user->barangay = $approvedApplication->barangay;
+                    // Add idPictures to pwdMember data
+                    $user->pwdMember->idPictures = $approvedApplication->idPictures;
                 }
             } else {
-                // If no pwdMember relationship, get barangay from application
+                // If no pwdMember relationship, get barangay and idPictures from application
                 $approvedApplication = \App\Models\Application::where('email', $user->email)
                     ->where('status', 'Approved')
                     ->latest()
                     ->first();
                 if ($approvedApplication) {
                     $user->barangay = $approvedApplication->barangay;
+                    // Create a temporary pwdMember object with idPictures
+                    $user->pwdMember = (object) [
+                        'idPictures' => $approvedApplication->idPictures
+                    ];
                 }
             }
         } else if ($user->role === 'BarangayPresident') {
-            $user->load('barangayPresident');
+            try {
+                $user->load('barangayPresident');
+            } catch (\Exception $e) {
+                // Handle missing barangay_president table gracefully
+                \Log::warning('Barangay president table not available: ' . $e->getMessage());
+                // Extract barangay from username (e.g., bp_gulod -> Gulod)
+                $barangayName = 'Unknown';
+                if (strpos($user->username, 'bp_') === 0) {
+                    $barangayName = str_replace('bp_', '', $user->username);
+                    $barangayName = str_replace('_', ' ', $barangayName);
+                    $barangayName = ucwords(strtolower($barangayName));
+                }
+                // Set barangay data extracted from username
+                $user->barangayPresident = (object) [
+                    'barangay' => $barangayName,
+                    'barangayID' => 1
+                ];
+            }
         } else if ($user->role === 'Admin') {
-            $user->load('admin');
+            try {
+                $user->load('admin');
+            } catch (\Exception $e) {
+                // Handle missing admin table gracefully
+                \Log::warning('Admin table not available: ' . $e->getMessage());
+            }
+        }
+
+        // Sanitize user data to prevent UTF-8 encoding issues
+        $userData = [
+            'userID' => $user->userID,
+            'username' => $user->username,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+        ];
+
+        // Add role-specific data safely
+        if ($user->role === 'PWDMember' && $user->pwdMember) {
+            $userData['pwdMember'] = [
+                'firstName' => $user->pwdMember->firstName ?? '',
+                'lastName' => $user->pwdMember->lastName ?? '',
+                'middleName' => $user->pwdMember->middleName ?? '',
+                'birthDate' => $user->pwdMember->birthDate ?? '',
+                'gender' => $user->pwdMember->gender ?? '',
+                'disabilityType' => $user->pwdMember->disabilityType ?? '',
+                'address' => $user->pwdMember->address ?? '',
+                'contactNumber' => $user->pwdMember->contactNumber ?? '',
+                'pwd_id' => $user->pwdMember->pwd_id ?? '',
+            ];
+            if (isset($user->barangay)) {
+                $userData['barangay'] = $user->barangay;
+            }
+            if (isset($user->pwdMember->idPictures)) {
+                $userData['pwdMember']['idPictures'] = $user->pwdMember->idPictures;
+            }
+        } else if ($user->role === 'BarangayPresident' && $user->barangayPresident) {
+            $userData['barangayPresident'] = [
+                'barangayID' => $user->barangayPresident->barangayID ?? '',
+                'barangay' => $user->barangayPresident->barangay ?? '',
+            ];
+        } else if ($user->role === 'Admin' && $user->admin) {
+            $userData['admin'] = [
+                'userID' => $user->admin->userID ?? '',
+            ];
         }
 
         return response()->json([
-            'user' => $user,
+            'user' => $userData,
             'access_token' => $token,
             'token_type' => 'Bearer',
         ]);

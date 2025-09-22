@@ -77,7 +77,7 @@ function BarangayPresidentPWDRecords() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const barangay = currentUser?.barangay || 'Barangay Poblacion';
+      const barangay = currentUser?.barangay || 'Unknown Barangay';
       
       // Fetch applications pending barangay approval for this barangay
       const applicationsUrl = `/applications/barangay/${encodeURIComponent(barangay)}/status/Pending%20Barangay%20Approval`;
@@ -849,8 +849,9 @@ function BarangayPresidentPWDRecords() {
       <Dialog
         open={viewDetailsOpen}
         onClose={handleCloseDetails}
-        maxWidth="md"
+        maxWidth="xl"
         fullWidth
+        fullScreen={false}
         PaperProps={{
           sx: {
             borderRadius: 3,

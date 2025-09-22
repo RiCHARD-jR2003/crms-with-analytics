@@ -40,7 +40,8 @@ import {
   Notifications,
   Public,
   PriorityHigh,
-  Close
+  Close,
+  Menu as MenuIcon
 } from '@mui/icons-material';
 import AdminSidebar from '../shared/AdminSidebar';
 import announcementService from '../../services/announcementService';
@@ -76,6 +77,7 @@ const Announcement = () => {
     highPriority: 0,
     eventAnnouncements: 0
   });
+
 
   // Fetch announcements on component mount
   useEffect(() => {
@@ -227,13 +229,12 @@ const Announcement = () => {
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'white' }}>
       <AdminSidebar />
       
-      {/* --- Main Content --- */}
-      <Box sx={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        ml: '280px',
-        width: 'calc(100% - 280px)'
+      <Box sx={{ 
+        flex: 1, 
+        ml: '280px', 
+        width: 'calc(100% - 280px)', 
+        p: 3, 
+        bgcolor: 'white'
       }}>
         {/* Top Bar */}
         <Box sx={{
@@ -274,7 +275,11 @@ const Announcement = () => {
             mb: 3
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Typography sx={{ fontWeight: 700, color: '#2C3E50', fontSize: '1.2rem' }}>
+              <Typography sx={{ 
+                fontWeight: 700, 
+                color: '#2C3E50', 
+                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' }
+              }}>
                 ANNOUNCEMENTS MANAGEMENT
               </Typography>
               <Button
@@ -286,9 +291,10 @@ const Announcement = () => {
                   color: 'white',
                   textTransform: 'none',
                   fontWeight: 600,
-                  px: 3,
+                  px: { xs: 2, sm: 3 },
                   py: 1,
                   borderRadius: 2,
+                  fontSize: { xs: '0.8rem', sm: '0.9rem' },
                   '&:hover': { bgcolor: '#2980B9' } 
                 }}
               >
@@ -297,7 +303,7 @@ const Announcement = () => {
             </Box>
 
             {/* Summary Cards */}
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper elevation={0} sx={{ 
                   border: '1px solid #E0E0E0', 
@@ -311,11 +317,20 @@ const Announcement = () => {
                     transition: 'all 0.3s ease'
                   }
                 }}>
-                  <Notifications sx={{ fontSize: 40, color: '#3498DB', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                  <Notifications sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#3498DB', mb: 1 }} />
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 700, 
+                    color: '#2C3E50', 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                  }}>
                     {stats.activeAnnouncements}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#2C3E50', 
+                    fontWeight: 500,
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>
                     Active Announcements
                   </Typography>
                 </Paper>
@@ -333,11 +348,20 @@ const Announcement = () => {
                     transition: 'all 0.3s ease'
                   }
                 }}>
-                  <Public sx={{ fontSize: 40, color: '#27AE60', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                  <Public sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#27AE60', mb: 1 }} />
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 700, 
+                    color: '#2C3E50', 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                  }}>
                     {stats.totalViews.toLocaleString()}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#2C3E50', 
+                    fontWeight: 500,
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>
                     Total Views
                   </Typography>
                 </Paper>
@@ -355,11 +379,20 @@ const Announcement = () => {
                     transition: 'all 0.3s ease'
                   }
                 }}>
-                  <PriorityHigh sx={{ fontSize: 40, color: '#E74C3C', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                  <PriorityHigh sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#E74C3C', mb: 1 }} />
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 700, 
+                    color: '#2C3E50', 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                  }}>
                     {stats.highPriority}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#2C3E50', 
+                    fontWeight: 500,
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>
                     High Priority
                   </Typography>
                 </Paper>
@@ -377,11 +410,20 @@ const Announcement = () => {
                     transition: 'all 0.3s ease'
                   }
                 }}>
-                  <Campaign sx={{ fontSize: 40, color: '#9B59B6', mb: 1 }} />
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
+                  <Campaign sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#9B59B6', mb: 1 }} />
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 700, 
+                    color: '#2C3E50', 
+                    mb: 1,
+                    fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                  }}>
                     {stats.eventAnnouncements}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#2C3E50', 
+                    fontWeight: 500,
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>
                     Event Announcements
                   </Typography>
                 </Paper>
@@ -412,10 +454,15 @@ const Announcement = () => {
             {/* Announcements Grid */}
             {!loading && !error && (
               <>
-                <Typography sx={{ fontWeight: 600, mb: 2, color: '#2C3E50', fontSize: '1.2rem' }}>
+                <Typography sx={{ 
+                  fontWeight: 600, 
+                  mb: 2, 
+                  color: '#2C3E50', 
+                  fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' }
+                }}>
                   CURRENT ANNOUNCEMENTS
                 </Typography>
-                <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid container spacing={{ xs: 1, sm: 2 }} sx={{ mb: 3 }}>
                   {announcements.map((announcement) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={announcement.announcementID}>
                       <Paper 
@@ -423,11 +470,11 @@ const Announcement = () => {
                         sx={{ 
                           border: '1px solid #E0E0E0',
                           borderRadius: 2,
-                          height: '280px', // Fixed height
+                          height: { xs: '320px', sm: '300px', md: '280px' }, // Responsive height
                           width: '100%', // Fixed width
                           display: 'flex',
                           flexDirection: 'column',
-                          p: 2,
+                          p: { xs: 1.5, sm: 2 },
                           bgcolor: 'white',
                           overflow: 'hidden', // Prevent content overflow
                           '&:hover': { 
@@ -446,8 +493,8 @@ const Announcement = () => {
                                 bgcolor: '#3498DB', 
                                 color: '#2C3E50',
                                 fontWeight: 600,
-                                fontSize: '0.6rem',
-                                height: '20px'
+                                fontSize: { xs: '0.5rem', sm: '0.6rem' },
+                                height: { xs: '18px', sm: '20px' }
                               }}
                             />
                             <Chip 
@@ -458,8 +505,8 @@ const Announcement = () => {
                                        getPriorityColor(announcement.priority) === 'warning' ? '#F39C12' : '#E74C3C', 
                                 color: '#2C3E50',
                                 fontWeight: 600,
-                                fontSize: '0.6rem',
-                                height: '20px'
+                                fontSize: { xs: '0.5rem', sm: '0.6rem' },
+                                height: { xs: '18px', sm: '20px' }
                               }}
                             />
                           </Box>
@@ -492,7 +539,7 @@ const Announcement = () => {
                             fontWeight: 700, 
                             mb: 1, 
                             color: '#2C3E50', 
-                            fontSize: '1rem',
+                            fontSize: { xs: '0.9rem', sm: '1rem' },
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -506,7 +553,7 @@ const Announcement = () => {
                             color: '#2C3E50', 
                             mb: 1, 
                             lineHeight: 1.4, 
-                            fontSize: '0.8rem',
+                            fontSize: { xs: '0.75rem', sm: '0.8rem' },
                             overflow: 'hidden',
                             display: '-webkit-box',
                             WebkitLineClamp: 3,
@@ -518,18 +565,34 @@ const Announcement = () => {
                           {announcement.content}
                         </Typography>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                          <Typography sx={{ color: '#B0BEC5', fontWeight: 500, fontSize: '0.7rem' }}>
+                          <Typography sx={{ 
+                            color: '#B0BEC5', 
+                            fontWeight: 500, 
+                            fontSize: { xs: '0.65rem', sm: '0.7rem' }
+                          }}>
                             Target: {announcement.targetAudience}
                           </Typography>
-                          <Typography sx={{ color: '#B0BEC5', fontWeight: 500, fontSize: '0.7rem' }}>
+                          <Typography sx={{ 
+                            color: '#B0BEC5', 
+                            fontWeight: 500, 
+                            fontSize: { xs: '0.65rem', sm: '0.7rem' }
+                          }}>
                             Views: {announcement.views}
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
-                          <Typography sx={{ color: '#4CAF50', fontWeight: 600, fontSize: '0.7rem' }}>
+                          <Typography sx={{ 
+                            color: '#4CAF50', 
+                            fontWeight: 600, 
+                            fontSize: { xs: '0.65rem', sm: '0.7rem' }
+                          }}>
                             Published: {announcement.publishDate}
                           </Typography>
-                          <Typography sx={{ color: '#FF9800', fontWeight: 600, fontSize: '0.7rem' }}>
+                          <Typography sx={{ 
+                            color: '#FF9800', 
+                            fontWeight: 600, 
+                            fontSize: { xs: '0.65rem', sm: '0.7rem' }
+                          }}>
                             Expires: {announcement.expiryDate}
                           </Typography>
                         </Box>
@@ -549,7 +612,12 @@ const Announcement = () => {
             bgcolor: 'white'
           }}>
             {/* Quick Actions */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: { xs: 1, sm: 2 },
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' }
+            }}>
               <Button 
                 variant="outlined" 
                 startIcon={<Schedule />}
@@ -558,6 +626,8 @@ const Announcement = () => {
                   fontWeight: 600,
                   borderColor: '#3498DB',
                   color: '#3498DB',
+                  fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                  py: { xs: 1.5, sm: 1 },
                   '&:hover': { 
                     bgcolor: '#3498DB', 
                     color: '#FFFFFF',
@@ -575,6 +645,8 @@ const Announcement = () => {
                   fontWeight: 600,
                   borderColor: '#27AE60',
                   color: '#27AE60',
+                  fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                  py: { xs: 1.5, sm: 1 },
                   '&:hover': { 
                     bgcolor: '#27AE60', 
                     color: '#FFFFFF',
@@ -592,6 +664,8 @@ const Announcement = () => {
                   fontWeight: 600,
                   borderColor: '#E74C3C',
                   color: '#E74C3C',
+                  fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                  py: { xs: 1.5, sm: 1 },
                   '&:hover': { 
                     bgcolor: '#E74C3C', 
                     color: '#FFFFFF',
@@ -614,20 +688,21 @@ const Announcement = () => {
                 sx: {
                   bgcolor: '#2C3E50',
                   color: '#FFFFFF',
-                  borderRadius: 2
+                  borderRadius: { xs: 0, sm: 2 },
+                  m: { xs: 0, sm: 2 }
                 }
               }}
             >
               <DialogTitle sx={{ 
                 color: '#FFFFFF', 
                 fontWeight: 700, 
-                fontSize: '1.2rem',
+                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
                 borderBottom: '1px solid #34495E'
               }}>
                 {editingAnnouncement ? 'Edit Announcement' : 'Create New Announcement'}
               </DialogTitle>
-              <DialogContent sx={{ pt: 3 }}>
-                <Grid container spacing={2}>
+              <DialogContent sx={{ pt: { xs: 2, sm: 3 } }}>
+                <Grid container spacing={{ xs: 1, sm: 2 }}>
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
@@ -945,13 +1020,17 @@ const Announcement = () => {
               </DialogContent>
               <DialogActions sx={{ 
                 borderTop: '1px solid #34495E',
-                p: 2,
-                gap: 1
+                p: { xs: 1.5, sm: 2 },
+                gap: { xs: 0.5, sm: 1 },
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'stretch', sm: 'center' }
               }}>
                 <Button 
                   onClick={handleCloseDialog}
                   sx={{ 
                     color: '#B0BEC5',
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                    py: { xs: 1.5, sm: 1 },
                     '&:hover': { bgcolor: 'rgba(176, 190, 197, 0.1)' }
                   }}
                 >
@@ -964,6 +1043,8 @@ const Announcement = () => {
                   sx={{ 
                     bgcolor: '#3498DB',
                     color: '#FFFFFF',
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                    py: { xs: 1.5, sm: 1 },
                     '&:hover': { bgcolor: '#2980B9' },
                     '&:disabled': { bgcolor: '#7F8C8D' }
                   }}
@@ -981,36 +1062,48 @@ const Announcement = () => {
                 sx: {
                   bgcolor: '#2C3E50',
                   color: '#FFFFFF',
-                  borderRadius: 2,
-                  minWidth: 400
+                  borderRadius: { xs: 0, sm: 2 },
+                  m: { xs: 0, sm: 2 },
+                  minWidth: { xs: '100%', sm: 400 }
                 }
               }}
             >
               <DialogTitle sx={{ 
                 color: '#FFFFFF', 
                 fontWeight: 700, 
-                fontSize: '1.2rem',
+                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
                 borderBottom: '1px solid #34495E'
               }}>
                 Delete Announcement
               </DialogTitle>
-              <DialogContent sx={{ pt: 3 }}>
-                <Typography sx={{ color: '#E0E0E0', mb: 2 }}>
+              <DialogContent sx={{ pt: { xs: 2, sm: 3 } }}>
+                <Typography sx={{ 
+                  color: '#E0E0E0', 
+                  mb: 2,
+                  fontSize: { xs: '0.9rem', sm: '1rem' }
+                }}>
                   Are you sure you want to delete "{announcementToDelete?.title}"?
                 </Typography>
-                <Typography sx={{ color: '#B0BEC5', fontSize: '0.9rem' }}>
+                <Typography sx={{ 
+                  color: '#B0BEC5', 
+                  fontSize: { xs: '0.8rem', sm: '0.9rem' }
+                }}>
                   This action cannot be undone.
                 </Typography>
               </DialogContent>
               <DialogActions sx={{ 
                 borderTop: '1px solid #34495E',
-                p: 2,
-                gap: 1
+                p: { xs: 1.5, sm: 2 },
+                gap: { xs: 0.5, sm: 1 },
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'stretch', sm: 'center' }
               }}>
                 <Button 
                   onClick={handleDeleteCancel}
                   sx={{ 
                     color: '#B0BEC5',
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                    py: { xs: 1.5, sm: 1 },
                     '&:hover': { bgcolor: 'rgba(176, 190, 197, 0.1)' }
                   }}
                 >
@@ -1022,6 +1115,8 @@ const Announcement = () => {
                   sx={{ 
                     bgcolor: '#E74C3C',
                     color: '#FFFFFF',
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                    py: { xs: 1.5, sm: 1 },
                     '&:hover': { bgcolor: '#C0392B' }
                   }}
                 >
@@ -1031,11 +1126,23 @@ const Announcement = () => {
             </Dialog>
 
             {/* View Details Dialog */}
-            <Dialog open={viewDialog} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>
+            <Dialog 
+              open={viewDialog} 
+              onClose={handleCloseViewDialog} 
+              maxWidth="md" 
+              fullWidth
+              PaperProps={{
+                sx: {
+                  borderRadius: { xs: 0, sm: 2 },
+                  m: { xs: 0, sm: 2 }
+                }
+              }}
+            >
               <DialogTitle sx={{ 
                 backgroundColor: '#2C3E50',
                 color: 'white !important', 
                 fontWeight: 600,
+                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
@@ -1054,6 +1161,7 @@ const Announcement = () => {
                 sx={{ 
                   backgroundColor: '#2C3E50 !important',
                   color: 'white !important',
+                  p: { xs: 2, sm: 3 },
                   '& *': { 
                     color: 'white !important',
                     '& .MuiTypography-root': { color: 'white !important' },
@@ -1073,45 +1181,67 @@ const Announcement = () => {
                 }}
               >
                 {selectedAnnouncement && (
-                  <Box sx={{ mt: 1 }}>
+                  <Box sx={{ mt: { xs: 0.5, sm: 1 } }}>
                     {/* Header with title and chips */}
-                    <Box sx={{ mb: 3 }}>
+                    <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                       <Typography 
                         variant="h5" 
-                        sx={{ fontWeight: 700, color: 'white !important', mb: 2, backgroundColor: '#3498DB', p: 1, borderRadius: 1 }}
+                        sx={{ 
+                          fontWeight: 700, 
+                          color: 'white !important', 
+                          mb: { xs: 1, sm: 2 }, 
+                          backgroundColor: '#3498DB', 
+                          p: { xs: 0.8, sm: 1 }, 
+                          borderRadius: 1,
+                          fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' }
+                        }}
                         style={{ color: 'white' }}
                       >
                         {selectedAnnouncement.title}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        gap: { xs: 0.5, sm: 1 }, 
+                        mb: { xs: 1, sm: 2 },
+                        flexWrap: 'wrap'
+                      }}>
                         <Chip
                           label={selectedAnnouncement.type}
+                          size="small"
                           sx={{
                             backgroundColor: '#3498DB',
                             color: 'white',
                             fontWeight: 600,
+                            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                            height: { xs: '20px', sm: '24px' },
                             '& .MuiChip-label': { color: 'white' }
                           }}
                           style={{ color: 'white' }}
                         />
                         <Chip
                           label={selectedAnnouncement.priority}
+                          size="small"
                           sx={{
                             backgroundColor: getPriorityColor(selectedAnnouncement.priority) === 'success' ? '#27AE60' : 
                                            getPriorityColor(selectedAnnouncement.priority) === 'warning' ? '#F39C12' : '#E74C3C',
                             color: 'white',
                             fontWeight: 600,
+                            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                            height: { xs: '20px', sm: '24px' },
                             '& .MuiChip-label': { color: 'white' }
                           }}
                           style={{ color: 'white' }}
                         />
                         <Chip
                           label={selectedAnnouncement.status}
+                          size="small"
                           sx={{
                             backgroundColor: selectedAnnouncement.status === 'Active' ? '#27AE60' : 
                                            selectedAnnouncement.status === 'Draft' ? '#F39C12' : '#E74C3C',
                             color: 'white',
                             fontWeight: 600,
+                            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                            height: { xs: '20px', sm: '24px' },
                             '& .MuiChip-label': { color: 'white' }
                           }}
                           style={{ color: 'white' }}
@@ -1119,50 +1249,80 @@ const Announcement = () => {
                       </Box>
                     </Box>
 
-                    <Box sx={{ borderTop: '1px solid #BDC3C7', mb: 3 }} />
+                    <Box sx={{ borderTop: '1px solid #BDC3C7', mb: { xs: 2, sm: 3 } }} />
 
                     {/* Content */}
-                    <Box sx={{ mb: 3 }}>
+                    <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                       <Typography 
                         variant="h6" 
-                        sx={{ fontWeight: 600, color: 'white !important', mb: 1, backgroundColor: '#3498DB', p: 1, borderRadius: 1 }}
+                        sx={{ 
+                          fontWeight: 600, 
+                          color: 'white !important', 
+                          mb: { xs: 0.8, sm: 1 }, 
+                          backgroundColor: '#3498DB', 
+                          p: { xs: 0.8, sm: 1 }, 
+                          borderRadius: 1,
+                          fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' }
+                        }}
                         style={{ color: 'white' }}
                       >
                         Content
                       </Typography>
                       <Typography 
                         variant="body1" 
-                        sx={{ color: 'white !important', lineHeight: 1.8, backgroundColor: '#34495E', p: 2, borderRadius: 1 }}
+                        sx={{ 
+                          color: 'white !important', 
+                          lineHeight: 1.8, 
+                          backgroundColor: '#34495E', 
+                          p: { xs: 1.5, sm: 2 }, 
+                          borderRadius: 1,
+                          fontSize: { xs: '0.9rem', sm: '1rem' }
+                        }}
                         style={{ color: 'white' }}
                       >
                         {selectedAnnouncement.content}
                       </Typography>
                     </Box>
 
-                    <Box sx={{ borderTop: '1px solid #BDC3C7', mb: 3 }} />
+                    <Box sx={{ borderTop: '1px solid #BDC3C7', mb: { xs: 2, sm: 3 } }} />
 
                     {/* Details Grid */}
-                    <Grid container spacing={3}>
+                    <Grid container spacing={{ xs: 2, sm: 3 }}>
                       <Grid item xs={12} md={6}>
                         <Typography 
                           variant="h6" 
-                          sx={{ fontWeight: 600, color: 'white !important', mb: 2, backgroundColor: '#3498DB', p: 1, borderRadius: 1 }}
+                          sx={{ 
+                            fontWeight: 600, 
+                            color: 'white !important', 
+                            mb: { xs: 1, sm: 2 }, 
+                            backgroundColor: '#3498DB', 
+                            p: { xs: 0.8, sm: 1 }, 
+                            borderRadius: 1,
+                            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' }
+                          }}
                           style={{ color: 'white' }}
                         >
                           Announcement Details
                         </Typography>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
                           <Box>
                             <Typography 
                               variant="subtitle2" 
-                              sx={{ color: '#BDC3C7 !important', fontWeight: 600 }}
+                              sx={{ 
+                                color: '#BDC3C7 !important', 
+                                fontWeight: 600,
+                                fontSize: { xs: '0.8rem', sm: '0.9rem' }
+                              }}
                               style={{ color: '#BDC3C7' }}
                             >
                               Target Audience
                             </Typography>
                             <Typography 
                               variant="body1" 
-                              sx={{ color: 'white !important' }}
+                              sx={{ 
+                                color: 'white !important',
+                                fontSize: { xs: '0.9rem', sm: '1rem' }
+                              }}
                               style={{ color: 'white' }}
                             >
                               {selectedAnnouncement.targetAudience}
@@ -1282,7 +1442,11 @@ const Announcement = () => {
                   </Box>
                 )}
               </DialogContent>
-              <DialogActions sx={{ p: 3, backgroundColor: '#2C3E50' }}>
+              <DialogActions sx={{ 
+                p: { xs: 2, sm: 3 }, 
+                backgroundColor: '#2C3E50',
+                justifyContent: 'center'
+              }}>
                 <Button 
                   onClick={handleCloseViewDialog} 
                   variant="contained"
@@ -1291,6 +1455,9 @@ const Announcement = () => {
                     textTransform: 'none',
                     fontWeight: 600,
                     color: 'white',
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                    py: { xs: 1.5, sm: 1 },
+                    px: { xs: 3, sm: 4 },
                     '&:hover': {
                       bgcolor: '#2980B9'
                     }

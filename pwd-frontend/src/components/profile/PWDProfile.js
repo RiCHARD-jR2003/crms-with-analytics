@@ -50,6 +50,11 @@ function PWDProfile() {
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [qrCodeDataURL, setQrCodeDataURL] = useState('');
   
+  // Password change popup states
+  const [passwordSuccessDialog, setPasswordSuccessDialog] = useState(false);
+  const [passwordErrorDialog, setPasswordErrorDialog] = useState(false);
+  const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
+  
   // Form states
   const [formData, setFormData] = useState({
     firstName: '',
@@ -70,7 +75,48 @@ function PWDProfile() {
 
   useEffect(() => {
     fetchProfile();
+    refreshUserData(); // Refresh user data to get latest idPictures
   }, []);
+
+  // Refresh user data from login endpoint to get updated idPictures
+  const refreshUserData = async () => {
+    try {
+      console.log('=== Refresh User Data Debug ===');
+      console.log('Current User:', currentUser);
+      console.log('Current User PWD Member:', currentUser?.pwd_member);
+      
+      // Try to get fresh data from the mock-pwd endpoint
+      const response = await api.get('/mock-pwd');
+      console.log('Mock PWD Response:', response);
+      
+      if (response && response.members) {
+        // Find the current user in the members list
+        const currentMember = response.members.find(member => 
+          member.userID === currentUser?.userID || 
+          member.email === currentUser?.email
+        );
+        
+        console.log('Found Current Member:', currentMember);
+        
+        if (currentMember && currentMember.idPictures) {
+          console.log('Member has ID Pictures:', currentMember.idPictures);
+          
+          // Update the profile state with the ID pictures
+          if (profile) {
+            setProfile({
+              ...profile,
+              idPictures: currentMember.idPictures
+            });
+            console.log('Updated profile with ID pictures');
+          }
+        } else {
+          console.log('No ID pictures found for current member');
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
 
   // Generate QR code when profile loads
   useEffect(() => {
@@ -84,9 +130,16 @@ function PWDProfile() {
       setLoading(true);
       setError(null);
       
+      console.log('=== Fetch Profile Debug ===');
+      console.log('Current User:', currentUser);
+      console.log('Current User PWD Member:', currentUser?.pwd_member);
+      
       // Use current user data if API fails
       if (currentUser && currentUser.pwd_member) {
         const pwdMember = currentUser.pwd_member;
+        console.log('PWD Member Data:', pwdMember);
+        console.log('PWD Member ID Pictures:', pwdMember.idPictures);
+        
         const profileData = {
           userID: currentUser.userID,
           firstName: pwdMember.firstName,
@@ -100,7 +153,11 @@ function PWDProfile() {
           pwd_id: pwdMember.pwd_id,
           barangay: currentUser.barangay,
           created_at: pwdMember.created_at,
+          idPictures: pwdMember.idPictures // Add ID pictures to profile data
         };
+        
+        console.log('Profile Data Created:', profileData);
+        console.log('Profile Data ID Pictures:', profileData.idPictures);
         
         setProfile(profileData);
         setFormData({
@@ -151,6 +208,7 @@ function PWDProfile() {
           pwd_id: pwdMember.pwd_id,
           barangay: currentUser.barangay,
           created_at: pwdMember.created_at,
+          idPictures: pwdMember.idPictures // Add ID pictures to fallback profile data
         };
         
         setProfile(profileData);
@@ -226,7 +284,7 @@ function PWDProfile() {
       
       await api.put('/pwd-member/profile', formData);
       
-      setSuccess('Profile updated successfully!');
+      setSuccess('✅ Profile updated successfully! Your changes have been saved.');
       setEditMode(false);
       await fetchProfile(); // Refresh data
       
@@ -243,12 +301,14 @@ function PWDProfile() {
   const handlePasswordChange = async () => {
     try {
       if (passwordData.newPassword !== passwordData.confirmPassword) {
-        setError('New passwords do not match');
+        setPasswordErrorMessage('New passwords do not match. Please make sure both password fields are identical.');
+        setPasswordErrorDialog(true);
         return;
       }
       
       if (passwordData.newPassword.length < 6) {
-        setError('Password must be at least 6 characters long');
+        setPasswordErrorMessage('Password must be at least 6 characters long.');
+        setPasswordErrorDialog(true);
         return;
       }
       
@@ -260,7 +320,8 @@ function PWDProfile() {
         newPassword: passwordData.newPassword
       });
       
-      setSuccess('Password changed successfully!');
+      // Show success popup
+      setPasswordSuccessDialog(true);
       setPasswordDialog(false);
       setPasswordData({
         currentPassword: '',
@@ -268,11 +329,16 @@ function PWDProfile() {
         confirmPassword: ''
       });
       
-      setTimeout(() => setSuccess(null), 3000);
-      
     } catch (err) {
       console.error('Error changing password:', err);
-      setError('Failed to change password: ' + (err.message || 'Unknown error'));
+      
+      // Show error popup
+      if (err.response?.data?.error === 'Current password is incorrect') {
+        setPasswordErrorMessage('Current password is incorrect. Please check your password and try again.');
+      } else {
+        setPasswordErrorMessage('Failed to change password: ' + (err.message || 'Unknown error'));
+      }
+      setPasswordErrorDialog(true);
     } finally {
       setSaving(false);
     }
@@ -368,7 +434,25 @@ function PWDProfile() {
         )}
 
         {success && (
-          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+          <Alert 
+            severity="success" 
+            sx={{ 
+              mb: 2,
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+              border: '2px solid #4CAF50',
+              backgroundColor: '#E8F5E8',
+              '& .MuiAlert-icon': {
+                fontSize: '1.5rem'
+              },
+              '& .MuiAlert-message': {
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: '#2E7D32'
+              }
+            }} 
+            onClose={() => setSuccess(null)}
+          >
             {success}
           </Alert>
         )}
@@ -780,9 +864,9 @@ function PWDProfile() {
                         {profile?.pwd_id || `PWD-${profile?.userID?.toString().padStart(6, '0') || 'N/A'}`}
                       </Typography>
                       
-                      {/* Photo Placeholder */}
+                      {/* ID Picture */}
                       <Box sx={{ 
-                        width: '100%',
+                        width: '130px',
                         height: '130px',
                         border: '3px solid #ddd',
                         bgcolor: '#f8f9fa',
@@ -792,35 +876,116 @@ function PWDProfile() {
                         position: 'relative',
                         mb: 2,
                         borderRadius: '4px',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        overflow: 'hidden',
+                        mx: 'auto' // Center the square container
                       }}>
-                        {/* X lines */}
-                        <Box sx={{ 
-                          position: 'absolute',
-                          width: '100%',
-                          height: '100%',
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: '50%',
-                            left: '15%',
-                            right: '15%',
-                            height: '3px',
-                            bgcolor: '#bbb',
-                            transform: 'rotate(45deg)'
-                          },
-                          '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            top: '50%',
-                            left: '15%',
-                            right: '15%',
-                            height: '3px',
-                            bgcolor: '#bbb',
-                            transform: 'rotate(-45deg)'
+                        {(() => {
+                          // Debug logging
+                          console.log('=== User Profile ID Picture Debug ===');
+                          console.log('Profile data:', profile);
+                          console.log('ID Pictures:', profile?.idPictures);
+                          
+                          if (!profile?.idPictures) {
+                            console.log('No ID pictures found in profile');
+                            return (
+                              <>
+                                {/* X lines */}
+                                <Box sx={{ 
+                                  position: 'absolute',
+                                  width: '100%',
+                                  height: '100%',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '15%',
+                                    right: '15%',
+                                    height: '3px',
+                                    bgcolor: '#bbb',
+                                    transform: 'rotate(45deg)'
+                                  },
+                                  '&::after': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '15%',
+                                    right: '15%',
+                                    height: '3px',
+                                    bgcolor: '#bbb',
+                                    transform: 'rotate(-45deg)'
+                                  }
+                                }} />
+                                {/* Avatar as fallback */}
+                                <Avatar
+                                  sx={{
+                                    width: 85,
+                                    height: 85,
+                                    bgcolor: '#1976d2',
+                                    fontSize: '1.6rem',
+                                    zIndex: 1,
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                  }}
+                                >
+                                  {getInitials(formData.firstName, formData.lastName)}
+                                </Avatar>
+                              </>
+                            );
                           }
-                        }} />
-                        {/* Avatar as photo */}
+                          
+                          let imagePath = null;
+                          
+                          // Handle different data formats
+                          if (Array.isArray(profile.idPictures)) {
+                            imagePath = profile.idPictures[0];
+                            console.log('Array format - first image:', imagePath);
+                          } else if (typeof profile.idPictures === 'string') {
+                            try {
+                              const parsed = JSON.parse(profile.idPictures);
+                              if (Array.isArray(parsed) && parsed.length > 0) {
+                                imagePath = parsed[0];
+                                console.log('String format - parsed first image:', imagePath);
+                              }
+                            } catch (e) {
+                              console.error('Failed to parse idPictures string:', e);
+                            }
+                          }
+                          
+                          if (imagePath) {
+                            const fullUrl = `http://127.0.0.1:8000/storage/${imagePath}`;
+                            console.log('Final image URL:', fullUrl);
+                            
+                            return (
+                              <img
+                                src={fullUrl}
+                                alt="ID Picture"
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  borderRadius: '4px',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0
+                                }}
+                                onError={(e) => {
+                                  console.error('Image load error for:', fullUrl);
+                                  e.target.style.display = 'none';
+                                  // Show fallback avatar
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                                onLoad={() => {
+                                  console.log('Image loaded successfully:', fullUrl);
+                                }}
+                              />
+                            );
+                          }
+                          
+                          console.log('No valid image path found');
+                          return null;
+                        })()}
+                        
+                        {/* Fallback Avatar (hidden by default) */}
                         <Avatar
                           sx={{
                             width: 85,
@@ -828,7 +993,8 @@ function PWDProfile() {
                             bgcolor: '#1976d2',
                             fontSize: '1.6rem',
                             zIndex: 1,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                            display: 'none'
                           }}
                         >
                           {getInitials(formData.firstName, formData.lastName)}
@@ -844,7 +1010,34 @@ function PWDProfile() {
                           Gender: {formData.gender || 'N/A'}
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5, color: '#333' }}>
-                          Address: {formData.address || 'N/A'}
+                          Address: {(() => {
+                            const addressParts = [];
+                            
+                            // Add complete address if available
+                            if (formData.address) {
+                              addressParts.push(formData.address);
+                            }
+                            
+                            // Add barangay if available
+                            if (profile?.barangay && profile.barangay !== 'N/A') {
+                              addressParts.push(profile.barangay);
+                            }
+                            
+                            // Add city (default to Cabuyao if not specified)
+                            const city = profile?.city && profile.city !== 'N/A' 
+                              ? profile.city 
+                              : 'Cabuyao';
+                            addressParts.push(city);
+                            
+                            // Add province (default to Laguna if not specified)
+                            const province = profile?.province && profile.province !== 'N/A' 
+                              ? profile.province 
+                              : 'Laguna';
+                            addressParts.push(province);
+                            
+                            // Join all parts with commas and return
+                            return addressParts.length > 0 ? addressParts.join(', ') : 'No address provided';
+                          })()}
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#333' }}>
                           Issued: {profile?.created_at ? formatDate(profile.created_at) : 'N/A'}
@@ -983,6 +1176,14 @@ function PWDProfile() {
                         size="small"
                       >
                         Change Password
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={refreshUserData}
+                        sx={{ color: 'white', borderColor: 'white' }}
+                        size="small"
+                      >
+                        Refresh Data
                       </Button>
                     </Box>
                   </CardContent>
@@ -1133,6 +1334,144 @@ function PWDProfile() {
               }}
             >
               {saving ? 'Changing...' : 'Change Password'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Password Success Popup */}
+        <Dialog 
+          open={passwordSuccessDialog} 
+          onClose={() => setPasswordSuccessDialog(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              border: '2px solid #4CAF50'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            textAlign: 'center', 
+            bgcolor: '#E8F5E8', 
+            color: '#2E7D32',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            py: 3
+          }}>
+            ✅ Password Changed Successfully!
+          </DialogTitle>
+          <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="body1" sx={{ 
+              color: '#2E7D32', 
+              fontSize: '1.1rem',
+              fontWeight: 500,
+              mb: 2
+            }}>
+              Your password has been updated successfully.
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              color: '#666', 
+              fontSize: '0.95rem'
+            }}>
+              You can now use your new password to log in to your account.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ 
+            justifyContent: 'center', 
+            pb: 3,
+            bgcolor: '#F8F9FA'
+          }}>
+            <Button 
+              onClick={() => setPasswordSuccessDialog(false)}
+              variant="contained"
+              sx={{ 
+                bgcolor: '#4CAF50',
+                color: '#FFFFFF',
+                px: 4,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: 'none',
+                '&:hover': { 
+                  bgcolor: '#45A049',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
+                }
+              }}
+            >
+              Got it!
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Password Error Popup */}
+        <Dialog 
+          open={passwordErrorDialog} 
+          onClose={() => setPasswordErrorDialog(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              border: '2px solid #F44336'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            textAlign: 'center', 
+            bgcolor: '#FFEBEE', 
+            color: '#C62828',
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            py: 3
+          }}>
+            ❌ Password Change Failed
+          </DialogTitle>
+          <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="body1" sx={{ 
+              color: '#C62828', 
+              fontSize: '1.1rem',
+              fontWeight: 500,
+              mb: 2
+            }}>
+              {passwordErrorMessage}
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              color: '#666', 
+              fontSize: '0.95rem'
+            }}>
+              Please check your information and try again.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ 
+            justifyContent: 'center', 
+            pb: 3,
+            bgcolor: '#F8F9FA'
+          }}>
+            <Button 
+              onClick={() => setPasswordErrorDialog(false)}
+              variant="contained"
+              sx={{ 
+                bgcolor: '#F44336',
+                color: '#FFFFFF',
+                px: 4,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: 'none',
+                '&:hover': { 
+                  bgcolor: '#D32F2F',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)'
+                }
+              }}
+            >
+              Try Again
             </Button>
           </DialogActions>
         </Dialog>

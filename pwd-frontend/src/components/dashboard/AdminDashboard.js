@@ -50,10 +50,13 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   Home as HomeIcon,
+  OpenInNew,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminSidebar from '../shared/AdminSidebar';
+import MobileHeader from '../shared/MobileHeader';
+import FreeGoogleMapsComponent from '../shared/FreeGoogleMapsComponent';
 import dashboardService from '../../services/dashboardService';
 import { api } from '../../services/api';
 import { 
@@ -86,12 +89,25 @@ function AdminDashboard() {
   });
   const [recentActivities, setRecentActivities] = useState([]);
   const [barangayContacts, setBarangayContacts] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [contactsLoading, setContactsLoading] = useState(false);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [selectedBarangay, setSelectedBarangay] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSidebarToggle = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleMobileMenuToggle = (isOpen) => {
+    setIsMobileMenuOpen(isOpen);
+  };
+
+  const handleBarangaySelect = (barangay) => {
+    setSelectedBarangay(barangay);
+    console.log('Selected barangay:', barangay.name);
   };
 
   const getActivityIcon = (iconType) => {
@@ -125,27 +141,29 @@ function AdminDashboard() {
       try {
         setLoading(true);
         
-        // Fetch PWD members from the public endpoint
-        const pwdResponse = await api.get('/mock-pwd');
-        const pwdMembers = pwdResponse.members || [];
-        
-        // Fetch applications from the public endpoint
-        const applicationsResponse = await api.get('/applications');
-        const applications = applicationsResponse || [];
-        
-        // Calculate stats
-        const statsData = {
-          totalPWDMembers: pwdMembers.length,
-          pendingApplications: applications.filter(app => app.status === 'Pending Admin Approval').length,
-          approvedApplications: applications.filter(app => app.status === 'Approved').length,
-          activeMembers: pwdMembers.length, // All PWD members are considered active
-          complaintsFeedback: 1 // User mentioned there's already 1 complaint
+        // Fetch dashboard stats from our working endpoint
+        const statsResponse = await api.get('/dashboard-stats');
+        console.log('Dashboard stats response:', statsResponse);
+        const statsData = statsResponse.data || {
+          totalPWDMembers: 0,
+          pendingApplications: 0,
+          approvedApplications: 0,
+          activeMembers: 0,
+          complaintsFeedback: 1
         };
+        console.log('Dashboard stats data:', statsData);
         
         setStats(statsData);
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         // Keep default values if API fails
+        setStats({
+          totalPWDMembers: 0,
+          pendingApplications: 0,
+          approvedApplications: 0,
+          activeMembers: 0,
+          complaintsFeedback: 1
+        });
       } finally {
         setLoading(false);
       }
@@ -155,21 +173,9 @@ function AdminDashboard() {
       try {
         setActivitiesLoading(true);
         
-        // Fetch recent applications to create activity feed
-        const applicationsResponse = await api.get('/applications');
-        const applications = applicationsResponse || [];
-        
-        // Transform applications into activity feed
-        const activities = applications.slice(0, 5).map((app, index) => ({
-          id: app.applicationID,
-          title: 'New PWD Application',
-          description: `Application from ${app.firstName} ${app.lastName}`,
-          barangay: app.barangay,
-          status: app.status === 'Approved' ? 'approved' : 'pending',
-          icon: 'person_add',
-          color: app.status === 'Approved' ? '#27AE60' : '#F39C12',
-          created_at: app.created_at
-        }));
+        // Fetch recent activities from our working endpoint
+        const activitiesResponse = await api.get('/dashboard-activities');
+        const activities = activitiesResponse.data || [];
         
         setRecentActivities(activities);
       } catch (error) {
@@ -184,227 +190,268 @@ function AdminDashboard() {
       try {
         setContactsLoading(true);
         
-        // Fetch PWD members to get barangay data
-        const pwdResponse = await api.get('/mock-pwd');
-        const pwdMembers = pwdResponse.members || [];
+        // Fetch barangay coordination from our working endpoint
+        const coordinationResponse = await api.get('/dashboard-coordination');
+        const coordination = coordinationResponse.data || [];
         
-        // Fetch applications to get pending counts per barangay
-        const applicationsResponse = await api.get('/applications');
-        const applications = applicationsResponse || [];
-        
-        // Group PWD members by barangay
-        const barangayStats = {};
-        pwdMembers.forEach(member => {
-          const barangay = member.barangay || 'Unknown';
-          if (!barangayStats[barangay]) {
-            barangayStats[barangay] = {
-              barangay: barangay,
-              pwd_count: 0,
-              pending_applications: 0,
-              president_name: `President of ${barangay}`,
-              phone: '+63 999 000 0000',
-              email: `president@${barangay.toLowerCase().replace(/\s+/g, '')}.com`,
-              status: 'active'
-            };
-          }
-          barangayStats[barangay].pwd_count++;
-        });
-        
-        // Add pending applications count
-        applications.forEach(app => {
-          const barangay = app.barangay || 'Unknown';
-          if (barangayStats[barangay]) {
-            if (app.status === 'Pending Barangay Approval' || app.status === 'Pending Admin Approval') {
-              barangayStats[barangay].pending_applications++;
-            }
-          }
-        });
-        
-        // Convert to array and sort by barangay name
-        const contacts = Object.values(barangayStats).sort((a, b) => a.barangay.localeCompare(b.barangay));
-        
-        setBarangayContacts(contacts);
+        setBarangayContacts(coordination);
       } catch (error) {
-        console.error('Error fetching barangay contacts:', error);
+        console.error('Error fetching barangay coordination:', error);
         setBarangayContacts([]);
       } finally {
         setContactsLoading(false);
       }
     };
 
+    const fetchMonthlyStats = async () => {
+      try {
+        setMonthlyLoading(true);
+        
+        // Fetch monthly stats from our working endpoint
+        const monthlyResponse = await api.get('/dashboard-monthly');
+        const monthly = monthlyResponse.data || [];
+        
+        setMonthlyStats(monthly);
+      } catch (error) {
+        console.error('Error fetching monthly stats:', error);
+        setMonthlyStats([]);
+      } finally {
+        setMonthlyLoading(false);
+      }
+    };
+
     fetchDashboardData();
     fetchRecentActivities();
     fetchBarangayContacts();
+    fetchMonthlyStats();
   }, []);
 
-  const renderMapSection = () => (
-    <Card sx={{ ...cardStyles, height: { xs: '250px', sm: '300px' }, mb: 3 }}>
-      <CardContent sx={{ height: '100%', p: { xs: 1, sm: 2 } }}>
-        <Box sx={{ 
-          height: '100%', 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 1
-        }}>
-          {/* Map Background Pattern */}
-          <Box sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `
-              radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 1px, transparent 1px),
-              radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 1px, transparent 1px),
-              radial-gradient(circle at 40% 60%, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: { xs: '30px 30px, 20px 20px, 25px 25px', sm: '40px 40px, 25px 25px, 30px 30px', md: '50px 50px, 30px 30px, 40px 40px' }
-          }} />
-          
-          {/* Map Content */}
+  const renderMapSection = () => {
+    console.log('🗺️ AdminDashboard renderMapSection called');
+    return (
+      <Card sx={{ ...cardStyles, height: { xs: '300px', sm: '400px' }, mb: 3 }}>
+        <CardContent sx={{ height: '100%', p: { xs: 1, sm: 2 } }}>
           <Typography 
-            variant="h5" 
+            variant="h6" 
             sx={{ 
               fontWeight: 'bold', 
-              mb: { xs: 1, sm: 2 },
-              fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
-              textAlign: 'center'
+              mb: 2,
+              fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+              color: '#2C3E50'
             }}
           >
             MAP OF CABUYAO
           </Typography>
           <Typography 
-            variant="body1" 
+            variant="body2" 
             sx={{ 
-              opacity: 0.9, 
-              mb: { xs: 1.5, sm: 2, md: 3 },
-              fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' }
+              mb: 2,
+              fontSize: { xs: '0.8rem', sm: '0.9rem' },
+              color: '#7F8C8D'
             }}
           >
             Laguna, Philippines
           </Typography>
           
-          {/* Barangay Grid */}
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(6, 1fr)' }, 
-            gap: { xs: 0.5, sm: 0.75, md: 1 }, 
-            maxWidth: { xs: '280px', sm: '400px', md: '600px' },
-            width: '100%',
-            px: { xs: 1, sm: 2 }
-          }}>
-            {[
-              'Bigaa', 'Butong', 'Marinig', 'Gulod', 'Pob. Uno', 'Pob. Dos',
-              'Pob. Tres', 'Sala', 'Niugan', 'Banaybanay', 'Pulo', 'Diezmo',
-              'Pittland', 'San Isidro', 'Mamatid', 'Baclaran', 'Casile', 'Banlic'
-            ].map((barangay, index) => (
-              <Button
-                key={barangay}
-                variant="contained"
-                size="small"
-                sx={{
-                  backgroundColor: index % 3 === 0 ? '#3498DB' : index % 3 === 1 ? '#E74C3C' : '#27AE60',
-                  fontSize: { xs: '8px', sm: '9px', md: '10px' },
-                  py: { xs: 0.25, sm: 0.5 },
-                  minWidth: { xs: '40px', sm: '50px', md: '60px' },
-                  height: { xs: '24px', sm: '28px', md: '32px' },
-                  '&:hover': {
-                    backgroundColor: index % 3 === 0 ? '#2980B9' : index % 3 === 1 ? '#C0392B' : '#229954'
-                  }
-                }}
-              >
-                {barangay}
-              </Button>
-            ))}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-
-  const renderLineChart = () => (
-    <Card sx={{ ...cardStyles, height: { xs: '250px', sm: '300px' }, mb: 3 }}>
-      <CardContent sx={{ height: '100%', p: { xs: 1, sm: 2 } }}>
-        <Typography 
-          variant="h6" 
-          gutterBottom 
-          sx={{ 
-            fontWeight: 'bold', 
-            color: '#FFFFFF',
-            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
-            mb: { xs: 1, sm: 2 }
-          }}
-        >
-          TOTAL NEWLY REGISTERED PWD MEMBERS (2025) - Line Chart
-        </Typography>
-        <Box sx={{ 
-          height: { xs: '150px', sm: '180px', md: '200px' }, 
-          display: 'flex', 
-          alignItems: 'end', 
-          justifyContent: 'space-between',
-          px: { xs: 1, sm: 2 },
-          border: '1px solid #E0E0E0',
-          borderRadius: 1,
-          background: 'linear-gradient(to top, #f8f9fa 0%, #ffffff 100%)',
-          overflowX: 'auto'
-        }}>
-          {/* Chart bars representing months */}
-          {['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'].map((month, index) => (
-            <Box key={month} sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center',
-              minWidth: { xs: '20px', sm: '25px', md: '30px' }
+          {/* Free Google Maps Component (No API Key Required) */}
+          <FreeGoogleMapsComponent 
+            onBarangaySelect={handleBarangaySelect}
+            height="calc(100% - 80px)"
+          />
+        
+          {selectedBarangay && (
+            <Box sx={{ 
+              mt: 2, 
+              p: 1.5, 
+              backgroundColor: '#E8F4FD', 
+              borderRadius: 1,
+              border: '1px solid #3498DB'
             }}>
-              <Box sx={{ 
-                width: { xs: '12px', sm: '16px', md: '20px' }, 
-                height: `${Math.random() * 80 + 20}px`, 
-                backgroundColor: '#3498DB',
-                borderRadius: '2px 2px 0 0',
-                mb: { xs: 0.5, sm: 1 }
-              }} />
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  fontSize: { xs: '8px', sm: '9px', md: '10px' }, 
-                  color: '#FFFFFF',
-                  textAlign: 'center'
-                }}
-              >
-                {month}
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#2C3E50' }}>
+                Selected: {selectedBarangay.name}
               </Typography>
             </Box>
-          ))}
-        </Box>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          gap: { xs: 2, sm: 3 }, 
-          mt: { xs: 1, sm: 2 },
-          flexWrap: 'wrap'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: { xs: 8, sm: 10, md: 12 }, height: 2, backgroundColor: '#3498DB' }} />
-            <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-              Registered
-            </Typography>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderLineChart = () => {
+    // Use fetched monthly data or fallback to empty data
+    const monthlyData = monthlyStats.length > 0 ? monthlyStats.map(item => ({
+      month: item.month,
+      registered: item.registered || 0,
+      pending: 0 // We don't have pending data in our endpoint yet
+    })) : [
+      { month: 'JAN', registered: 0, pending: 0 },
+      { month: 'FEB', registered: 0, pending: 0 },
+      { month: 'MAR', registered: 0, pending: 0 },
+      { month: 'APR', registered: 0, pending: 0 },
+      { month: 'MAY', registered: 0, pending: 0 },
+      { month: 'JUN', registered: 0, pending: 0 },
+      { month: 'JUL', registered: 0, pending: 0 },
+      { month: 'AUG', registered: 0, pending: 0 },
+      { month: 'SEP', registered: 0, pending: 0 },
+      { month: 'OCT', registered: 0, pending: 0 },
+      { month: 'NOV', registered: 0, pending: 0 },
+      { month: 'DEC', registered: 0, pending: 0 }
+    ];
+
+    const maxValue = Math.max(...monthlyData.map(d => d.registered + d.pending));
+    const chartHeight = 180;
+    const chartWidth = 400;
+
+    return (
+      <Card sx={{ ...cardStyles, height: { xs: '250px', sm: '300px' }, mb: 3 }}>
+        <CardContent sx={{ height: '100%', p: { xs: 1, sm: 2 } }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            sx={{ 
+              fontWeight: 'bold', 
+              color: '#FFFFFF',
+              fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
+              mb: { xs: 1, sm: 2 }
+            }}
+          >
+            TOTAL NEWLY REGISTERED PWD MEMBERS (2025) - Line Chart
+          </Typography>
+          <Box sx={{ 
+            height: { xs: '150px', sm: '180px', md: '200px' }, 
+            position: 'relative',
+            px: { xs: 1, sm: 2 },
+            border: '1px solid #E0E0E0',
+            borderRadius: 1,
+            background: 'linear-gradient(to top, #f8f9fa 0%, #ffffff 100%)',
+            overflow: 'hidden'
+          }}>
+            {/* SVG Line Chart */}
+            <svg 
+              width="100%" 
+              height="100%" 
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+              style={{ position: 'absolute', top: 0, left: 0 }}
+            >
+              {/* Grid lines */}
+              {[0, 0.25, 0.5, 0.75, 1].map((ratio, index) => (
+                <line
+                  key={index}
+                  x1="40"
+                  y1={chartHeight * ratio}
+                  x2={chartWidth - 20}
+                  y2={chartHeight * ratio}
+                  stroke="#E0E0E0"
+                  strokeWidth="1"
+                  strokeDasharray="2,2"
+                />
+              ))}
+
+              {/* Registered line */}
+              <polyline
+                points={monthlyData.map((data, index) => {
+                  const x = 40 + (index * (chartWidth - 60) / 11);
+                  const y = chartHeight - 20 - ((data.registered / maxValue) * (chartHeight - 40));
+                  return `${x},${y}`;
+                }).join(' ')}
+                fill="none"
+                stroke="#3498DB"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Pending line */}
+              <polyline
+                points={monthlyData.map((data, index) => {
+                  const x = 40 + (index * (chartWidth - 60) / 11);
+                  const y = chartHeight - 20 - ((data.pending / maxValue) * (chartHeight - 40));
+                  return `${x},${y}`;
+                }).join(' ')}
+                fill="none"
+                stroke="#E74C3C"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Data points for Registered */}
+              {monthlyData.map((data, index) => {
+                const x = 40 + (index * (chartWidth - 60) / 11);
+                const y = chartHeight - 20 - ((data.registered / maxValue) * (chartHeight - 40));
+                return (
+                  <circle
+                    key={`registered-${index}`}
+                    cx={x}
+                    cy={y}
+                    r="4"
+                    fill="#3498DB"
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                  />
+                );
+              })}
+
+              {/* Data points for Pending */}
+              {monthlyData.map((data, index) => {
+                const x = 40 + (index * (chartWidth - 60) / 11);
+                const y = chartHeight - 20 - ((data.pending / maxValue) * (chartHeight - 40));
+                return (
+                  <circle
+                    key={`pending-${index}`}
+                    cx={x}
+                    cy={y}
+                    r="4"
+                    fill="#E74C3C"
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                  />
+                );
+              })}
+
+              {/* Month labels */}
+              {monthlyData.map((data, index) => {
+                const x = 40 + (index * (chartWidth - 60) / 11);
+                return (
+                  <text
+                    key={`label-${index}`}
+                    x={x}
+                    y={chartHeight - 5}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="#666"
+                    fontFamily="Arial, sans-serif"
+                  >
+                    {data.month}
+                  </text>
+                );
+              })}
+            </svg>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: { xs: 8, sm: 10, md: 12 }, height: 2, backgroundColor: '#E74C3C' }} />
-            <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-              Pending
-            </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: { xs: 2, sm: 3 }, 
+            mt: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ width: { xs: 8, sm: 10, md: 12 }, height: 2, backgroundColor: '#3498DB' }} />
+              <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                Registered
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ width: { xs: 8, sm: 10, md: 12 }, height: 2, backgroundColor: '#E74C3C' }} />
+              <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                Pending
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderOverview = () => (
     <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
@@ -517,7 +564,7 @@ function AdminDashboard() {
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
                   }}
                 >
-                  {stats.approvedApplications}
+                  0
                 </Typography>
                 <Typography 
                   variant="body2" 
@@ -558,7 +605,7 @@ function AdminDashboard() {
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
                   }}
                 >
-                  {stats.activeMembers}
+                  {stats.totalPWDMembers}
                 </Typography>
                 <Typography 
                   variant="body2" 
@@ -836,8 +883,17 @@ function AdminDashboard() {
     </Grid>
   );
 
+  // Debug logging
+  console.log('Current stats state:', stats);
+  
   return (
     <Box sx={mainContainerStyles}>
+      {/* Mobile Header */}
+      <MobileHeader 
+        onMenuToggle={handleMobileMenuToggle}
+        isMenuOpen={isMobileMenuOpen}
+      />
+      
       {/* Admin Sidebar with Toggle */}
       <AdminSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
 
@@ -849,37 +905,12 @@ function AdminDashboard() {
           flexGrow: 1,
           ml: { xs: 0, md: '280px' }, // Hide sidebar margin on mobile
           width: { xs: '100%', md: 'calc(100% - 280px)' },
-          transition: 'margin-left 0.3s ease-in-out'
+          transition: 'margin-left 0.3s ease-in-out',
+          // Adjust for mobile header
+          paddingTop: { xs: '56px', md: 0 }, // Mobile header height
         }}
       >
         <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 1 } }}>
-          {/* Mobile Menu Button */}
-          <Box sx={{ 
-            display: { xs: 'flex', md: 'none' }, 
-            alignItems: 'center', 
-            mb: 2,
-            p: 1
-          }}>
-            <Button
-              variant="outlined"
-              startIcon={<MenuIcon />}
-              onClick={handleSidebarToggle}
-              sx={{
-                color: '#566573',
-                borderColor: '#D5DBDB',
-                textTransform: 'none',
-                fontWeight: 600,
-                borderRadius: 2,
-                '&:hover': {
-                  borderColor: '#253D90',
-                  background: '#F4F7FC',
-                  color: '#253D90'
-                }
-              }}
-            >
-              Menu
-            </Button>
-          </Box>
 
           {/* Page Header */}
           <Box sx={{ mb: { xs: 2, md: 4 } }}>

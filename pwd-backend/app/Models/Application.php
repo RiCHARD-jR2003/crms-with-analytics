@@ -38,6 +38,13 @@ class Application extends Model
         'idType',
         'idNumber',
         'medicalCertificate',
+        'clinicalAbstract',
+        'voterCertificate',
+        'idPictures',
+        'birthCertificate',
+        'wholeBodyPicture',
+        'affidavit',
+        'barangayCertificate',
         'barangayClearance',
         'idPicture',
         'submissionDate',
@@ -49,7 +56,8 @@ class Application extends Model
         'submissionDate' => 'date',
         'birthDate' => 'date',
         'disabilityDate' => 'date',
-        'status' => 'string'
+        'status' => 'string',
+        'idPictures' => 'array'
     ];
 
     // Relationships

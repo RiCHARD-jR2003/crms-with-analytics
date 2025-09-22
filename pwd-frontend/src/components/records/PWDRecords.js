@@ -1,42 +1,43 @@
-  import React, { useMemo, useState, useEffect } from 'react';
-  import { 
-    Box, 
-    Typography, 
-    Paper, 
-    Tabs, 
-    Tab, 
-    TextField, 
-    InputAdornment, 
-    IconButton, 
-    Table, 
-    TableHead, 
-    TableRow, 
-    TableCell, 
-    TableBody, 
-    Grid, 
-    Button,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Chip,
-    Collapse,
-    Divider,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Avatar,
-    Card,
-    CardContent
-  } from '@mui/material';
-  import SearchIcon from '@mui/icons-material/Search';
-  import PrintIcon from '@mui/icons-material/Print';
-  import FilterListIcon from '@mui/icons-material/FilterList';
-  import ClearIcon from '@mui/icons-material/Clear';
-  import VisibilityIcon from '@mui/icons-material/Visibility';
-  import CloseIcon from '@mui/icons-material/Close';
+import React, { useMemo, useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Tabs, 
+  Tab, 
+  TextField, 
+  InputAdornment, 
+  IconButton, 
+  Table, 
+  TableHead, 
+  TableRow, 
+  TableCell, 
+  TableBody, 
+  Grid, 
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  Collapse,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Avatar,
+  Card,
+  CardContent
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import PrintIcon from '@mui/icons-material/Print';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ClearIcon from '@mui/icons-material/Clear';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CloseIcon from '@mui/icons-material/Close';
   import AdminSidebar from '../shared/AdminSidebar';
+  import MobileHeader from '../shared/MobileHeader';
   import { applicationService } from '../../services/applicationService';
   import pwdMemberService from '../../services/pwdMemberService';
   import { api } from '../../services/api';
@@ -56,10 +57,13 @@
     tableStyles
   } from '../../utils/themeStyles';
 
-  function PWDRecords() {
-    const { currentUser } = useAuth();
-    const [tab, setTab] = React.useState(0);
-    const [showFilters, setShowFilters] = useState(false);
+function PWDRecords() {
+  const { currentUser } = useAuth();
+  const [tab, setTab] = React.useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     const [filters, setFilters] = useState({
       search: '',
       barangay: '',
@@ -73,6 +77,11 @@
     const [error, setError] = useState(null);
     const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
     const [selectedApplication, setSelectedApplication] = useState(null);
+    
+    // File viewer modal state
+    const [fileViewerOpen, setFileViewerOpen] = useState(false);
+    const [viewedFile, setViewedFile] = useState(null);
+    const [fileType, setFileType] = useState('image'); // 'image' or 'pdf'
 
     // Sample data for dropdowns
     const barangays = [
@@ -107,17 +116,53 @@
         setLoading(true);
         setError(null);
         try {
-          // Fetch applications pending admin approval using applicationService
-          const applicationsData = await applicationService.getByStatus('Pending Admin Approval');
-          setApplications(applicationsData);
+          // Fetch applications pending admin approval and barangay approval
+          const adminPendingData = await applicationService.getByStatus('Pending Admin Approval');
+          const barangayPendingData = await applicationService.getByStatus('Pending Barangay Approval');
+          
+          // Combine both types of pending applications
+          const allPendingApplications = [...adminPendingData, ...barangayPendingData];
+          setApplications(allPendingApplications);
           
           // Also fetch all applications to get complete data for PWD members
           const allApplicationsResponse = await api.get('/applications');
           const allApplications = allApplicationsResponse || [];
           
-          // Fetch PWD members using pwdMemberService
-          const pwdResponse = await pwdMemberService.getAll();
-          const members = pwdResponse.data?.members || pwdResponse.members || [];
+          // Try to fetch PWD members, but handle the case where the table doesn't exist
+          let members = [];
+          try {
+            const pwdResponse = await pwdMemberService.getAll();
+            members = pwdResponse.data?.members || pwdResponse.members || [];
+          } catch (pwdError) {
+            console.log('PWD Member table not available, using fallback endpoint');
+            // If PWD member table doesn't exist, use the fallback endpoint
+            try {
+              const fallbackResponse = await api.get('/pwd-members-fallback');
+              members = fallbackResponse.members || [];
+            } catch (fallbackError) {
+              console.log('Fallback endpoint failed, using approved applications directly');
+              // If fallback also fails, use approved applications directly
+              const approvedApplications = allApplications.filter(app => app.status === 'Approved');
+              members = approvedApplications.map(app => ({
+                id: app.applicationID,
+                userID: app.applicationID,
+                firstName: app.firstName,
+                lastName: app.lastName,
+                middleName: app.middleName,
+                birthDate: app.birthDate,
+                gender: app.gender,
+                disabilityType: app.disabilityType,
+                address: app.address,
+                contactNumber: app.contactNumber,
+                email: app.email,
+                barangay: app.barangay,
+                emergencyContact: app.emergencyContact,
+                emergencyPhone: app.emergencyPhone,
+                emergencyRelationship: app.emergencyRelationship,
+                status: 'Active'
+              }));
+            }
+          }
           
           // Enhance PWD members with application data
           const enhancedMembers = members.map(member => {
@@ -152,15 +197,72 @@
 
     const handleApproveApplication = async (applicationId) => {
       try {
-        await applicationService.updateStatus(applicationId, {
-          status: 'Approved',
+        // Use the proper admin approval endpoint that creates PWD Member record
+        await api.post(`/applications/${applicationId}/approve-admin`, {
           remarks: 'Approved by Admin'
         });
 
-        // Refresh the applications list
-        const data = await applicationService.getByStatus('Pending Admin Approval');
-        setApplications(data);
-        alert('Application approved successfully! PWD Member created.');
+        // Refresh both applications and PWD members lists
+        const applicationsData = await applicationService.getByStatus('Pending Admin Approval');
+        setApplications(applicationsData);
+        
+        // Refresh PWD members - handle case where table doesn't exist
+        const allApplicationsResponse = await api.get('/applications');
+        const allApplications = allApplicationsResponse || [];
+        
+        let members = [];
+        try {
+          const pwdResponse = await pwdMemberService.getAll();
+          members = pwdResponse.data?.members || pwdResponse.members || [];
+        } catch (pwdError) {
+          console.log('PWD Member table not available, using fallback endpoint');
+          // If PWD member table doesn't exist, use the fallback endpoint
+          try {
+            const fallbackResponse = await api.get('/pwd-members-fallback');
+            members = fallbackResponse.members || [];
+          } catch (fallbackError) {
+            console.log('Fallback endpoint failed, using approved applications directly');
+            // If fallback also fails, use approved applications directly
+            const approvedApplications = allApplications.filter(app => app.status === 'Approved');
+            members = approvedApplications.map(app => ({
+              id: app.applicationID,
+              userID: app.applicationID,
+              firstName: app.firstName,
+              lastName: app.lastName,
+              middleName: app.middleName,
+              birthDate: app.birthDate,
+              gender: app.gender,
+              disabilityType: app.disabilityType,
+              address: app.address,
+              contactNumber: app.contactNumber,
+              email: app.email,
+              barangay: app.barangay,
+              emergencyContact: app.emergencyContact,
+              emergencyPhone: app.emergencyPhone,
+              emergencyRelationship: app.emergencyRelationship,
+              status: 'Active'
+            }));
+          }
+        }
+        
+        const enhancedMembers = members.map(member => {
+          const correspondingApp = allApplications.find(app => 
+            app.email && member.email && app.email === member.email
+          );
+          
+          return {
+            ...member,
+            barangay: correspondingApp?.barangay || member.barangay,
+            disabilityType: member.disabilityType || correspondingApp?.disabilityType,
+            emergencyContact: member.emergencyContact || correspondingApp?.emergencyContact,
+            contactNumber: member.contactNumber || correspondingApp?.contactNumber,
+            email: member.email || correspondingApp?.email
+          };
+        });
+        
+        setPwdMembers(enhancedMembers);
+        
+        alert('Application approved successfully! PWD Member created and added to masterlist.');
       } catch (err) {
         console.error('Error approving application:', err);
         alert('Failed to approve application: ' + (err.message || 'Unknown error'));
@@ -195,6 +297,34 @@
     const handleCloseDetails = () => {
       setViewDetailsOpen(false);
       setSelectedApplication(null);
+    };
+
+    // File viewer functions
+    const handleViewFile = (filePath, fileName) => {
+      const fileExtension = filePath.split('.').pop().toLowerCase();
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension);
+      const isPdf = fileExtension === 'pdf';
+      
+      if (isImage) {
+        setFileType('image');
+      } else if (isPdf) {
+        setFileType('pdf');
+      } else {
+        // For other file types, open in new tab as fallback
+        window.open(`http://127.0.0.1:8000/storage/${filePath}`, '_blank');
+        return;
+      }
+      
+      setViewedFile({
+        path: filePath,
+        name: fileName
+      });
+      setFileViewerOpen(true);
+    };
+
+    const handleCloseFileViewer = () => {
+      setFileViewerOpen(false);
+      setViewedFile(null);
     };
 
     const handlePrintApplication = () => {
@@ -353,6 +483,14 @@
 
     const hasActiveFilters = Object.values(filters).some(value => value !== '');
 
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleMobileMenuToggle = (isOpen) => {
+    setIsMobileMenuOpen(isOpen);
+  };
+
     // Check if user is authenticated and is an admin
     if (!currentUser) {
       return (
@@ -375,27 +513,55 @@
     }
 
     return (
-      <Box sx={{ ...mainContainerStyles, bgcolor: 'white' }}>
-        <AdminSidebar />
+      <Box sx={mainContainerStyles}>
+        {/* Mobile Header */}
+        {/* <MobileHeader 
+          onMenuToggle={handleMobileMenuToggle}
+          isMenuOpen={isMobileMenuOpen}
+        /> */}
+        
+        {/* Admin Sidebar with Toggle */}
+        <AdminSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
 
-        {/* Main content */}
-        <Box sx={{ ...contentAreaStyles, bgcolor: 'white' }}>
-          <Box sx={{ p: 4, m: 2 }}>
-            <Paper sx={{ ...cardStyles, p: 3, bgcolor: 'white' }}>
+        {/* Main Content */}
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            flexGrow: 1,
+            ml: { xs: 0, md: '280px' }, // Hide sidebar margin on mobile
+            width: { xs: '100%', md: 'calc(100% - 280px)' },
+            transition: 'margin-left 0.3s ease-in-out',
+            // Adjust for mobile header
+            // paddingTop: { xs: '56px', md: 0 }, // Mobile header height
+            p: { xs: 1, sm: 2, md: 3 } // Responsive padding
+          }}
+        >
+          <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 1 } }}>
+            <Paper sx={{ 
+              ...cardStyles, 
+              p: 3, 
+              bgcolor: 'white',
+              borderRadius: 3
+            }}>
               {/* Header */}
-              <Box sx={{ mb: 3, textAlign: 'center' }}>
+              <Box sx={{ mb: { xs: 2, md: 3 }, textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ 
                   fontWeight: 700, 
                   color: '#0b87ac',
                   mb: 1,
                   textTransform: 'uppercase',
-                  letterSpacing: '1px'
+                  letterSpacing: '1px',
+                  fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' }
                 }}>
                   PWD Member Records
                 </Typography>
                 <Typography variant="body1" sx={{ 
                   color: '#7F8C8D',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  fontSize: { xs: '0.9rem', md: '1rem' }
                 }}>
                   Manage and track PWD member information and applications
                 </Typography>
@@ -484,7 +650,7 @@
                       value={filters.search}
                       onChange={(e) => handleFilterChange('search', e.target.value)}
                       sx={{ 
-                        width: 300,
+                        width: { xs: '100%', sm: 250, md: 300 },
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2,
                           bgcolor: '#FFFFFF',
@@ -517,7 +683,7 @@
 
               {/* Filter Section */}
               <Collapse in={showFilters}>
-                <Box sx={{ mt: 3, p: 4, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E0E0E0', m: 1 }}>
+                <Box sx={{ mt: 3, p: { xs: 2, md: 4 }, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E0E0E0', m: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                     <Typography variant="h6" sx={{ fontWeight: 600, color: '#0b87ac' }}>
                       Search Filters
@@ -856,6 +1022,7 @@
 
               <Box sx={{ mt: 4, mx: 1 }}>
                 <Paper elevation={0} sx={{ border: '1px solid #D6DBDF', borderRadius: 2, overflow: 'hidden', p: 1, bgcolor: 'white' }}>
+                  <Box sx={{ overflowX: 'auto' }}>
                   <Box sx={{ bgcolor: 'white', color: '#0b87ac', p: 2, m: 1, borderBottom: '2px solid #E0E0E0' }}>
                     <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#0b87ac' }}>
                       {tab === 0 ? 'PWD MASTERLIST' : 'PENDING APPLICATIONS'}
@@ -1101,10 +1268,11 @@
                     </TableBody>
                   </Table>
                   )}
+                  </Box>
                 </Paper>
               </Box>
             </Paper>
-          </Box>
+          </Container>
         </Box>
 
         {/* Application Details Modal */}
@@ -1370,32 +1538,40 @@
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
                         Complete Address:
                       </Typography>
-                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
-                        {selectedApplication.address}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
-                        Barangay:
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
-                        {selectedApplication.barangay || 'N/A'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
-                        City:
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
-                        {selectedApplication.city || 'N/A'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
-                        Postal Code:
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1 }}>
-                        {selectedApplication.postalCode || 'N/A'}
+                      <Typography variant="body1" sx={{ color: '#0b87ac', mb: 1, lineHeight: 1.6 }}>
+                        {(() => {
+                          const addressParts = [];
+                          
+                          // Add complete address if available
+                          if (selectedApplication.address) {
+                            addressParts.push(selectedApplication.address);
+                          }
+                          
+                          // Add barangay if available
+                          if (selectedApplication.barangay && selectedApplication.barangay !== 'N/A') {
+                            addressParts.push(selectedApplication.barangay);
+                          }
+                          
+                          // Add city if available, otherwise use default
+                          const city = selectedApplication.city && selectedApplication.city !== 'N/A' 
+                            ? selectedApplication.city 
+                            : 'Cabuyao';
+                          addressParts.push(city);
+                          
+                          // Add province if available, otherwise use default
+                          const province = selectedApplication.province && selectedApplication.province !== 'N/A' 
+                            ? selectedApplication.province 
+                            : 'Laguna';
+                          addressParts.push(province);
+                          
+                          // Add postal code if available
+                          if (selectedApplication.postalCode && selectedApplication.postalCode !== 'N/A') {
+                            addressParts.push(selectedApplication.postalCode);
+                          }
+                          
+                          // Join all parts with commas and return
+                          return addressParts.length > 0 ? addressParts.join(', ') : 'No address provided';
+                        })()}
                       </Typography>
                     </Grid>
                   </Grid>
@@ -1414,50 +1590,6 @@
                   </Typography>
                   
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
-                        ID Picture (2x2):
-                      </Typography>
-                      {selectedApplication.idPicture ? (
-                        <Box sx={{ textAlign: 'center' }}>
-                          <img 
-                            src={`http://127.0.0.1:8000/storage/${selectedApplication.idPicture}`}
-                            alt="ID Picture"
-                            style={{
-                              maxWidth: '150px',
-                              maxHeight: '150px',
-                              border: '2px solid #E9ECEF',
-                              borderRadius: '8px',
-                              objectFit: 'cover'
-                            }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'block';
-                            }}
-                          />
-                          <Typography variant="body2" sx={{ 
-                            display: 'none', 
-                            color: '#7F8C8D', 
-                            fontStyle: 'italic',
-                            mt: 1
-                          }}>
-                            File not found or invalid
-                          </Typography>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            sx={{ mt: 1, fontSize: '0.7rem' }}
-                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${selectedApplication.idPicture}`, '_blank')}
-                          >
-                            View Full Size
-                          </Button>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
-                          No file uploaded
-                        </Typography>
-                      )}
-                    </Grid>
                     
                     <Grid item xs={12} sm={4}>
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
@@ -1492,7 +1624,7 @@
                             size="small"
                             variant="outlined"
                             sx={{ mt: 1, fontSize: '0.7rem' }}
-                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${selectedApplication.medicalCertificate}`, '_blank')}
+                            onClick={() => handleViewFile(selectedApplication.medicalCertificate, 'Medical Certificate')}
                           >
                             View Full Size
                           </Button>
@@ -1506,13 +1638,13 @@
                     
                     <Grid item xs={12} sm={4}>
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
-                        Barangay Clearance:
+                        Barangay Certificate of Residency:
                       </Typography>
-                      {selectedApplication.barangayClearance ? (
+                      {selectedApplication.barangayCertificate ? (
                         <Box sx={{ textAlign: 'center' }}>
                           <img 
-                            src={`http://127.0.0.1:8000/storage/${selectedApplication.barangayClearance}`}
-                            alt="Barangay Clearance"
+                            src={`http://127.0.0.1:8000/storage/${selectedApplication.barangayCertificate}`}
+                            alt="Barangay Certificate"
                             style={{
                               maxWidth: '150px',
                               maxHeight: '150px',
@@ -1537,7 +1669,7 @@
                             size="small"
                             variant="outlined"
                             sx={{ mt: 1, fontSize: '0.7rem' }}
-                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${selectedApplication.barangayClearance}`, '_blank')}
+                            onClick={() => handleViewFile(selectedApplication.barangayCertificate, 'Barangay Certificate of Residency')}
                           >
                             View Full Size
                           </Button>
@@ -1548,6 +1680,288 @@
                         </Typography>
                       )}
                     </Grid>
+                    
+                    {/* Clinical Abstract/Assessment */}
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                        Clinical Abstract/Assessment:
+                      </Typography>
+                      {selectedApplication.clinicalAbstract ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                          <img 
+                            src={`http://127.0.0.1:8000/storage/${selectedApplication.clinicalAbstract}`}
+                            alt="Clinical Abstract"
+                            style={{
+                              maxWidth: '150px',
+                              maxHeight: '150px',
+                              border: '2px solid #E9ECEF',
+                              borderRadius: '8px',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ 
+                            display: 'none', 
+                            color: '#7F8C8D', 
+                            fontStyle: 'italic',
+                            mt: 1
+                          }}>
+                            File not found or invalid
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ mt: 1, fontSize: '0.7rem' }}
+                            onClick={() => handleViewFile(selectedApplication.clinicalAbstract, 'Clinical Abstract/Assessment')}
+                          >
+                            View Full Size
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
+                          No file uploaded
+                        </Typography>
+                      )}
+                    </Grid>
+
+                    {/* Voter Certificate */}
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                        Voter Certificate:
+                      </Typography>
+                      {selectedApplication.voterCertificate ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                          <img 
+                            src={`http://127.0.0.1:8000/storage/${selectedApplication.voterCertificate}`}
+                            alt="Voter Certificate"
+                            style={{
+                              maxWidth: '150px',
+                              maxHeight: '150px',
+                              border: '2px solid #E9ECEF',
+                              borderRadius: '8px',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ 
+                            display: 'none', 
+                            color: '#7F8C8D', 
+                            fontStyle: 'italic',
+                            mt: 1
+                          }}>
+                            File not found or invalid
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ mt: 1, fontSize: '0.7rem' }}
+                            onClick={() => handleViewFile(selectedApplication.voterCertificate, 'Voter Certificate')}
+                          >
+                            View Full Size
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
+                          No file uploaded
+                        </Typography>
+                      )}
+                    </Grid>
+
+                    {/* ID Pictures (Multiple) */}
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                        2pcs ID Pictures:
+                      </Typography>
+                      {selectedApplication.idPictures && (Array.isArray(selectedApplication.idPictures) ? selectedApplication.idPictures.length > 0 : true) ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                          {(Array.isArray(selectedApplication.idPictures) ? selectedApplication.idPictures : JSON.parse(selectedApplication.idPictures || '[]')).map((picture, index) => (
+                              <Box key={index} sx={{ mb: 1 }}>
+                                <img 
+                                  src={`http://127.0.0.1:8000/storage/${picture}`}
+                                  alt={`ID Picture ${index + 1}`}
+                                  style={{
+                                    maxWidth: '120px',
+                                    maxHeight: '120px',
+                                    border: '2px solid #E9ECEF',
+                                    borderRadius: '8px',
+                                    objectFit: 'cover',
+                                    margin: '2px'
+                                  }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'block';
+                                  }}
+                                />
+                                <Typography variant="body2" sx={{ 
+                                  display: 'none', 
+                                  color: '#7F8C8D', 
+                                  fontStyle: 'italic',
+                                  mt: 1
+                                }}>
+                                  File not found or invalid
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ mt: 1, fontSize: '0.7rem', mr: 1 }}
+                                  onClick={() => handleViewFile(picture, `ID Picture ${index + 1}`)}
+                                >
+                                  View {index + 1}
+                                </Button>
+                              </Box>
+                            ))}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
+                          No files uploaded
+                        </Typography>
+                      )}
+                    </Grid>
+
+                    {/* Birth Certificate */}
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                        Birth Certificate (if minor):
+                      </Typography>
+                      {selectedApplication.birthCertificate ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                          <img 
+                            src={`http://127.0.0.1:8000/storage/${selectedApplication.birthCertificate}`}
+                            alt="Birth Certificate"
+                            style={{
+                              maxWidth: '150px',
+                              maxHeight: '150px',
+                              border: '2px solid #E9ECEF',
+                              borderRadius: '8px',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ 
+                            display: 'none', 
+                            color: '#7F8C8D', 
+                            fontStyle: 'italic',
+                            mt: 1
+                          }}>
+                            File not found or invalid
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ mt: 1, fontSize: '0.7rem' }}
+                            onClick={() => handleViewFile(selectedApplication.birthCertificate, 'Birth Certificate')}
+                          >
+                            View Full Size
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
+                          No file uploaded
+                        </Typography>
+                      )}
+                    </Grid>
+
+                    {/* Whole Body Picture */}
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                        Whole Body Picture (Apparent Disability):
+                      </Typography>
+                      {selectedApplication.wholeBodyPicture ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                          <img 
+                            src={`http://127.0.0.1:8000/storage/${selectedApplication.wholeBodyPicture}`}
+                            alt="Whole Body Picture"
+                            style={{
+                              maxWidth: '150px',
+                              maxHeight: '150px',
+                              border: '2px solid #E9ECEF',
+                              borderRadius: '8px',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ 
+                            display: 'none', 
+                            color: '#7F8C8D', 
+                            fontStyle: 'italic',
+                            mt: 1
+                          }}>
+                            File not found or invalid
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ mt: 1, fontSize: '0.7rem' }}
+                            onClick={() => handleViewFile(selectedApplication.wholeBodyPicture, 'Whole Body Picture')}
+                          >
+                            View Full Size
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
+                          No file uploaded
+                        </Typography>
+                      )}
+                    </Grid>
+
+                    {/* Affidavit */}
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                        Affidavit of Guardianship/Loss:
+                      </Typography>
+                      {selectedApplication.affidavit ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                          <img 
+                            src={`http://127.0.0.1:8000/storage/${selectedApplication.affidavit}`}
+                            alt="Affidavit"
+                            style={{
+                              maxWidth: '150px',
+                              maxHeight: '150px',
+                              border: '2px solid #E9ECEF',
+                              borderRadius: '8px',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ 
+                            display: 'none', 
+                            color: '#7F8C8D', 
+                            fontStyle: 'italic',
+                            mt: 1
+                          }}>
+                            File not found or invalid
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ mt: 1, fontSize: '0.7rem' }}
+                            onClick={() => handleViewFile(selectedApplication.affidavit, 'Affidavit of Guardianship/Loss')}
+                          >
+                            View Full Size
+                          </Button>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#7F8C8D', fontStyle: 'italic' }}>
+                          No file uploaded
+                        </Typography>
+                      )}
+                    </Grid>
+
                   </Grid>
                 </Paper>
 
@@ -1625,6 +2039,167 @@
               }}
             >
               Print Application
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* File Viewer Modal */}
+        <Dialog
+          open={fileViewerOpen}
+          onClose={handleCloseFileViewer}
+          maxWidth="xl"
+          fullWidth
+          fullScreen={false}
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: '#0b87ac', 
+            color: 'white', 
+            textAlign: 'center',
+            py: 2,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              {viewedFile?.name || 'Document Viewer'}
+            </Typography>
+            <IconButton
+              onClick={handleCloseFileViewer}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: 'white',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent sx={{ 
+            p: 0, 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            bgcolor: '#F8F9FA'
+          }}>
+            {viewedFile && (
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 2
+              }}>
+                {fileType === 'image' ? (
+                  <img
+                    src={`http://127.0.0.1:8000/storage/${viewedFile.path}`}
+                    alt={viewedFile.name}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '70vh',
+                      objectFit: 'contain',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : fileType === 'pdf' ? (
+                  <iframe
+                    src={`http://127.0.0.1:8000/storage/${viewedFile.path}`}
+                    width="100%"
+                    height="70vh"
+                    style={{
+                      border: 'none',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+                    }}
+                    title={viewedFile.name}
+                  />
+                ) : null}
+                
+                {/* Error fallback */}
+                <Box sx={{ 
+                  display: 'none',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 4,
+                  textAlign: 'center'
+                }}>
+                  <Typography variant="h6" sx={{ color: '#7F8C8D', mb: 2 }}>
+                    Unable to display file
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#7F8C8D', mb: 2 }}>
+                    The file format is not supported for preview.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => window.open(`http://127.0.0.1:8000/storage/${viewedFile.path}`, '_blank')}
+                    sx={{
+                      borderColor: '#0b87ac',
+                      color: '#0b87ac',
+                      '&:hover': {
+                        borderColor: '#1B2631',
+                        color: '#1B2631'
+                      }
+                    }}
+                  >
+                    Open in New Tab
+                  </Button>
+                </Box>
+              </Box>
+            )}
+          </DialogContent>
+          
+          <DialogActions sx={{ 
+            p: 2, 
+            bgcolor: '#F8F9FA',
+            borderTop: '1px solid #DEE2E6'
+          }}>
+            <Button
+              onClick={handleCloseFileViewer}
+              variant="outlined"
+              sx={{
+                borderColor: '#6C757D',
+                color: '#6C757D',
+                textTransform: 'none',
+                fontWeight: 600
+              }}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => window.open(`http://127.0.0.1:8000/storage/${viewedFile?.path}`, '_blank')}
+              variant="contained"
+              sx={{
+                bgcolor: '#0b87ac',
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': {
+                  bgcolor: '#1B2631'
+                }
+              }}
+            >
+              Open in New Tab
             </Button>
           </DialogActions>
         </Dialog>

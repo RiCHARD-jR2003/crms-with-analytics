@@ -9,23 +9,26 @@ class PWDMember extends Model
 {
     use HasFactory;
 
-    protected $table = 'pwd_member';
+    protected $table = 'pwd_members';
     protected $primaryKey = 'id';
     public $incrementing = true;
 
     protected $fillable = [
         'userID',
-        'pwd_id',
-        'pwd_id_generated_at',
-        'qr_code_data',
-        'qr_code_generated_at',
         'firstName',
         'lastName',
+        'middleName',
         'birthDate',
         'gender',
         'disabilityType',
         'address',
-        'contactNumber'
+        'contactNumber',
+        'email',
+        'barangay',
+        'emergencyContact',
+        'emergencyPhone',
+        'emergencyRelationship',
+        'status'
     ];
 
     // Relationships
@@ -50,8 +53,6 @@ class PWDMember extends Model
     }
 
     protected $casts = [
-        'birthDate' => 'date',
-        'pwd_id_generated_at' => 'datetime',
-        'qr_code_generated_at' => 'datetime'
+        'birthDate' => 'date'
     ];
 }

@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import MenuIcon from '@mui/icons-material/Menu';
+import Menu from '@mui/icons-material/Menu';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import PersonIcon from '@mui/icons-material/Person';
 import BarangayPresidentSidebar from '../shared/BarangayPresidentSidebar';
@@ -34,7 +34,7 @@ import { api } from '../../services/api';
 // Main Component
 function BarangayPresidentPWDCard() {
   const { currentUser } = useAuth();
-  const barangay = currentUser?.barangay || 'Barangay Poblacion';
+  const barangay = currentUser?.barangay || 'Unknown Barangay';
   
   const [pwdData, setPwdData] = useState([]);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -48,20 +48,19 @@ function BarangayPresidentPWDCard() {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching PWD members...');
+        console.log('Fetching PWD members for barangay:', barangay);
         const response = await api.get('/mock-pwd');
         console.log('API Response:', response);
         const members = response.data?.members || response.members || [];
-        console.log('Members data:', members);
+        console.log('All members data:', members);
         
         // Filter members by barangay
         const filteredMembers = members.filter(member => {
-          // For now, show all members since barangay filtering needs to be done on backend
-          // TODO: Implement proper barangay filtering based on application data
-          return true;
+          // Only show members from the barangay president's barangay
+          return member.barangay === barangay;
         });
         
-        console.log('Filtered members:', filteredMembers);
+        console.log(`Filtered members for ${barangay}:`, filteredMembers);
         setPwdData(filteredMembers);
         if (filteredMembers.length > 0) {
           setSelectedRow(filteredMembers[0].userID);
@@ -232,7 +231,7 @@ function BarangayPresidentPWDCard() {
             <FilterListIcon />
           </IconButton>
           <IconButton sx={{ color: '#7F8C8D', border: '1px solid #E0E0E0', borderRadius: 2 }}>
-            <MenuIcon />
+            <Menu />
           </IconButton>
         </Box>
 

@@ -91,8 +91,8 @@ function BarangayPresidentDashboard() {
         const applicationsResponse = await api.get('/applications');
         const applications = applicationsResponse || [];
         
-        // Filter by barangay - use user's barangay or default to Mamatid for testing
-        const targetBarangay = currentUser?.barangay || 'Mamatid';
+        // Filter by barangay - use user's barangay or fallback
+        const targetBarangay = currentUser?.barangay || 'Unknown Barangay';
         const barangayMembers = pwdMembers.filter(member => member.barangay === targetBarangay);
         const barangayApplications = applications.filter(app => app.barangay === targetBarangay);
         

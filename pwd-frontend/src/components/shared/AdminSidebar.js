@@ -11,7 +11,7 @@ import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import MenuIcon from '@mui/icons-material/Menu';
+import Menu from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -139,11 +139,11 @@ function AdminSidebar({ isOpen, onToggle }) {
           </Box>
         </Box>
         
-        {/* Hamburger Menu Button */}
+        {/* Hamburger Menu Button - Hidden on mobile, show on desktop */}
         <IconButton
           onClick={onToggle}
           sx={{
-            display: { xs: 'flex', md: 'none' },
+            display: { xs: 'none', md: 'flex' }, // Hide on mobile, show on desktop
             color: '#566573',
             '&:hover': {
               backgroundColor: '#E8F0FE',
@@ -151,7 +151,7 @@ function AdminSidebar({ isOpen, onToggle }) {
             }
           }}
         >
-          {isOpen ? <CloseIcon /> : <MenuIcon />}
+          {isOpen ? <CloseIcon /> : <Menu />}
         </IconButton>
       </Box>
 

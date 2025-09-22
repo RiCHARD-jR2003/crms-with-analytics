@@ -24,6 +24,7 @@ class BenefitController extends Controller
             'amount' => 'required|string|max:50',
             'description' => 'required|string',
             'barangay' => 'nullable|string|max:100',
+            'selectedBarangays' => 'nullable|array',
             'quarter' => 'nullable|string|max:50',
             'birthdayMonth' => 'nullable|string|max:10',
             'status' => 'nullable|string|max:50',

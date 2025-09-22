@@ -119,27 +119,108 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
     }
   };
 
+  // Helper function to get the appropriate getUserMedia method
+  const getUserMedia = (constraints) => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      return navigator.mediaDevices.getUserMedia(constraints);
+    }
+    
+    // Legacy support
+    const legacyGetUserMedia = navigator.getUserMedia || 
+                              navigator.webkitGetUserMedia || 
+                              navigator.mozGetUserMedia || 
+                              navigator.msGetUserMedia;
+    
+    if (legacyGetUserMedia) {
+      return new Promise((resolve, reject) => {
+        legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+      });
+    }
+    
+    throw new Error('getUserMedia not supported');
+  };
+
   const initializeCamera = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Check if camera is available
-      const hasCamera = await QrScanner.hasCamera();
-      if (!hasCamera) {
-        setError('No camera found on this device. Please connect a webcam or use a mobile device.');
+      // Check if MediaDevices API is available
+      console.log('📱 Attempting to access camera directly...');
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('📱 MediaDevices available:', !!navigator.mediaDevices);
+      console.log('📱 getUserMedia available:', !!navigator.mediaDevices?.getUserMedia);
+      console.log('📱 HTTPS:', location.protocol === 'https:');
+      console.log('📱 Localhost:', location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+      console.log('📱 Current URL:', location.href);
+
+      // Check HTTPS requirement for camera access
+      const isHTTPS = location.protocol === 'https:';
+      const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '192.168.18.25';
+      
+      if (!isHTTPS && !isLocalhost) {
+        setError('📱 Camera access requires HTTPS or localhost. Please access the app via HTTPS or use localhost.');
         setLoading(false);
         return;
       }
 
-      // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      // Check if MediaDevices API is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Check for legacy getUserMedia support
+        const legacyGetUserMedia = navigator.getUserMedia || 
+                                  navigator.webkitGetUserMedia || 
+                                  navigator.mozGetUserMedia || 
+                                  navigator.msGetUserMedia;
+        
+        if (!legacyGetUserMedia) {
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          if (isMobile) {
+            setError('📱 Your mobile browser does not support camera access. Please use Chrome, Safari, or Firefox browser.');
+          } else {
+            setError('📱 Camera access not supported. Please use a modern browser like Chrome, Firefox, or Edge.');
+          }
+          setLoading(false);
+          return;
         }
-      });
+      }
+
+      // Get camera stream - try back camera first for mobile devices
+      let stream;
+      try {
+        // Try back camera first (environment) for better QR scanning
+        stream = await getUserMedia({
+          video: {
+            facingMode: 'environment', // Use back camera for QR scanning
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+      } catch (backCameraError) {
+        console.log('Back camera not available, trying front camera...');
+        console.log('Back camera error:', backCameraError);
+        try {
+          // Fallback to front camera if back camera is not available
+          stream = await getUserMedia({
+            video: {
+              facingMode: 'user', // Front camera fallback
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+        } catch (frontCameraError) {
+          console.log('Front camera also failed, trying any available camera...');
+          console.log('Front camera error:', frontCameraError);
+          try {
+            // Last resort: try any available camera
+            stream = await getUserMedia({
+              video: true
+            });
+          } catch (anyCameraError) {
+            console.log('All camera attempts failed:', anyCameraError);
+            throw anyCameraError;
+          }
+        }
+      }
 
       streamRef.current = stream;
       
@@ -173,7 +254,7 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
                   highlightScanRegion: true,
                   highlightCodeOutline: true,
                   preferredCamera: 'environment', // Use back camera for better QR scanning
-                  maxScansPerSecond: 10, // Increase scan frequency for better detection
+                  maxScansPerSecond: 15, // Increase scan frequency for better detection
                   returnDetailedScanResult: true,
                   preferredEnvironment: 'environment',
                   // Disable web worker to avoid chunk loading issues
@@ -198,20 +279,31 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       setLoading(false);
     } catch (err) {
       console.error('Camera initialization error:', err);
+      console.error('Error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      });
       setLoading(false);
       
       switch (err.name) {
         case 'NotAllowedError':
-          setError('Camera access denied. Please allow camera permissions and refresh the page.');
+          setError('📱 Camera access denied. Please allow camera permissions in your browser settings and refresh the page.');
           break;
         case 'NotFoundError':
-          setError('No camera found. Please connect a webcam or use a mobile device.');
+          setError('📱 No camera found. Please ensure your device has a camera and try again.');
           break;
         case 'NotSupportedError':
-          setError('Camera not supported. Please use Chrome, Firefox, or Edge browser.');
+          setError('📱 Camera not supported. Please use Chrome, Firefox, or Safari browser on your mobile device.');
+          break;
+        case 'OverconstrainedError':
+          setError('📱 Camera constraints not met. Please try refreshing the page or use a different device.');
+          break;
+        case 'SecurityError':
+          setError('📱 Camera access blocked for security reasons. Please ensure you are using HTTPS or localhost.');
           break;
         default:
-          setError(`Camera error: ${err.message}`);
+          setError(`📱 Camera error: ${err.message}. Please try refreshing the page or use a different browser.`);
       }
     }
   };
@@ -238,12 +330,18 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       setIsProcessing(true);
       setError(null);
       
+      console.log('🎯 QR Code scanned:', result);
+      console.log('📄 QR Code data:', result.data);
+      console.log('🔍 QR Code format:', typeof result.data);
+      
       // Try to parse QR code data
       let qrData;
       try {
         qrData = JSON.parse(result.data);
+        console.log('✅ Successfully parsed QR data as JSON:', qrData);
       } catch (parseError) {
         console.error('❌ Failed to parse QR code as JSON:', parseError);
+        console.log('📄 Raw QR data:', result.data);
         
         // Try to handle non-JSON QR codes (like URLs or plain text)
         if (result.data.includes('pwd') || result.data.includes('PWD')) {
@@ -251,6 +349,7 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
           const pwdIdMatch = result.data.match(/PWD-?\d+/i);
           if (pwdIdMatch) {
             const pwdId = pwdIdMatch[0];
+            console.log('🔍 Extracted PWD ID:', pwdId);
             
             // Create a simple QR data object
             qrData = {
@@ -260,6 +359,7 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
               firstName: 'Unknown',
               lastName: 'Member'
             };
+            console.log('✅ Created QR data object:', qrData);
           } else {
             console.error('❌ No PWD ID found in text');
             setError(`Invalid QR code format. Content: ${result.data.substring(0, 50)}...`);
@@ -296,6 +396,9 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
         
         // Check eligibility for current birthday benefits
         const eligibleBenefits = checkEligibility(member);
+        
+        console.log('🔍 Eligible benefits found:', eligibleBenefits);
+        console.log('🔍 Benefit structure:', eligibleBenefits.length > 0 ? eligibleBenefits[0] : 'No benefits');
         
         setMemberInfo(prev => ({
           ...prev,
@@ -377,7 +480,9 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
             
           }
         } catch (claimError) {
-          console.error(`Error processing claim for benefit ${benefit.name}:`, claimError);
+          console.error(`Error processing claim for benefit:`, benefit);
+          console.error(`Benefit name:`, benefit.title || benefit.benefitType || benefit.type || 'No name property');
+          console.error(`Claim error:`, claimError);
         }
       }
       
@@ -391,7 +496,8 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
       }
       
       // Show success message
-      alert(`Successfully processed ${eligibleBenefits.length} benefit claims for ${member.firstName} ${member.lastName}`);
+      const benefitNames = eligibleBenefits.map(b => b.title || b.benefitType || b.type || 'Unknown Benefit').join(', ');
+      alert(`Successfully processed ${eligibleBenefits.length} benefit claims for ${member.firstName} ${member.lastName}: ${benefitNames}`);
       
     } catch (error) {
       console.error('Error processing benefit claims:', error);
@@ -755,7 +861,13 @@ const SimpleQRScanner = ({ open, onClose, onScan }) => {
               💡 Tip: Hold your phone steady and ensure good lighting for best results
             </Typography>
             <Typography variant="caption" sx={{ mt: 1, color: '#95A5A6', display: 'block' }}>
-              📱 Camera access requires HTTPS or localhost. Make sure to allow camera permissions when prompted.
+              📱 Mobile users: Make sure to allow camera permissions when prompted. Use Chrome or Safari for best results.
+            </Typography>
+            <Typography variant="caption" sx={{ mt: 1, color: '#95A5A6', display: 'block' }}>
+              🔄 If camera doesn't work, try refreshing the page or use the manual input below.
+            </Typography>
+            <Typography variant="caption" sx={{ mt: 1, color: '#E67E22', display: 'block', fontWeight: 'bold' }}>
+              ⚠️ If you see camera errors, please use Chrome, Safari, or Firefox browser and allow camera permissions.
             </Typography>
             
             {/* Manual Input Option */}

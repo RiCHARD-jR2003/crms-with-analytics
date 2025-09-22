@@ -45,13 +45,15 @@ import {
   Message,
   AttachFile,
   Download,
-  Delete
+  Delete,
+  Menu
 } from '@mui/icons-material';
 import AdminSidebar from '../shared/AdminSidebar';
 import { supportService } from '../../services/supportService';
 import FilePreview from '../shared/FilePreview';
 
 const AdminSupportDesk = () => {
+
   const [viewDialog, setViewDialog] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [tickets, setTickets] = useState([]);
@@ -223,32 +225,34 @@ const AdminSupportDesk = () => {
   const totalTickets = tickets.length;
 
   return (
-      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#FFFFFF' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#FFFFFF' }}>
       <AdminSidebar />
       
-      {/* Main content */}
       <Box sx={{ 
         flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        ml: '280px',
-        width: 'calc(100% - 280px)',
-        p: 3
+        ml: '280px', 
+        width: 'calc(100% - 280px)', 
+        p: 3, 
+        bgcolor: '#FFFFFF'
       }}>
         {/* Header */}
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center',
-          mb: 3,
-          p: 2,
+          mb: { xs: 2, sm: 3 },
+          p: { xs: 1.5, sm: 2 },
           bgcolor: '#FFFFFF',
           borderRadius: 2,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           border: '1px solid #E0E0E0'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <SupportAgent sx={{ fontSize: 32, color: '#3498DB' }} />
-            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+            <SupportAgent sx={{ fontSize: { xs: 28, sm: 32 }, color: '#3498DB' }} />
+            <Typography variant="h4" sx={{ 
+              fontWeight: 'bold', 
+              color: '#2C3E50',
+              fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+            }}>
               Support Desk
             </Typography>
           </Box>
@@ -269,15 +273,22 @@ const AdminSupportDesk = () => {
         )}
 
         {/* Statistics Cards */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
-              <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                <Warning sx={{ fontSize: 40, color: '#E74C3C', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50' }}>
+              <CardContent sx={{ textAlign: 'center', p: { xs: 1.5, sm: 2 } }}>
+                <Warning sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#E74C3C', mb: 1 }} />
+                <Typography variant="h4" sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#2C3E50',
+                  fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                }}>
                   {openTickets}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                <Typography variant="body2" sx={{ 
+                  color: '#7F8C8D',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                }}>
                   Open Tickets
                 </Typography>
               </CardContent>
@@ -285,12 +296,19 @@ const AdminSupportDesk = () => {
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
-              <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                <Schedule sx={{ fontSize: 40, color: '#F39C12', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50' }}>
+              <CardContent sx={{ textAlign: 'center', p: { xs: 1.5, sm: 2 } }}>
+                <Schedule sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#F39C12', mb: 1 }} />
+                <Typography variant="h4" sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#2C3E50',
+                  fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                }}>
                   {inProgressTickets}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                <Typography variant="body2" sx={{ 
+                  color: '#7F8C8D',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                }}>
                   In Progress
                 </Typography>
               </CardContent>
@@ -298,12 +316,19 @@ const AdminSupportDesk = () => {
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
-              <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                <CheckCircle sx={{ fontSize: 40, color: '#27AE60', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50' }}>
+              <CardContent sx={{ textAlign: 'center', p: { xs: 1.5, sm: 2 } }}>
+                <CheckCircle sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#27AE60', mb: 1 }} />
+                <Typography variant="h4" sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#2C3E50',
+                  fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                }}>
                   {resolvedTickets}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                <Typography variant="body2" sx={{ 
+                  color: '#7F8C8D',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                }}>
                   Resolved
                 </Typography>
               </CardContent>
@@ -311,12 +336,19 @@ const AdminSupportDesk = () => {
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
-              <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                <SupportAgent sx={{ fontSize: 40, color: '#3498DB', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50' }}>
+              <CardContent sx={{ textAlign: 'center', p: { xs: 1.5, sm: 2 } }}>
+                <SupportAgent sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: '#3498DB', mb: 1 }} />
+                <Typography variant="h4" sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#2C3E50',
+                  fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2rem' }
+                }}>
                   {totalTickets}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                <Typography variant="body2" sx={{ 
+                  color: '#7F8C8D',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                }}>
                   Total Tickets
                 </Typography>
               </CardContent>
@@ -326,7 +358,7 @@ const AdminSupportDesk = () => {
 
         {/* Tickets Table */}
         <Paper elevation={0} sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           border: '1px solid #E0E0E0',
           borderRadius: 4,
           bgcolor: '#FFFFFF',
@@ -334,7 +366,12 @@ const AdminSupportDesk = () => {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <Typography sx={{ fontWeight: 700, mb: 3, color: '#2C3E50', fontSize: '1.2rem' }}>
+          <Typography sx={{ 
+            fontWeight: 700, 
+            mb: { xs: 2, sm: 3 }, 
+            color: '#2C3E50', 
+            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' }
+          }}>
             Support Tickets
           </Typography>
           
@@ -343,37 +380,85 @@ const AdminSupportDesk = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer>
+            <TableContainer sx={{ overflowX: 'auto' }}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Ticket #</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Subject</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Requester</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Category</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Priority</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Created</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Actions</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Ticket #</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Subject</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Requester</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Category</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Priority</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Status</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Created</TableCell>
+                  <TableCell sx={{ 
+                    fontWeight: 600, 
+                    color: '#2C3E50',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                  }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {tickets.map((ticket) => (
                   <TableRow key={ticket.id} hover>
-                    <TableCell sx={{ fontWeight: 600, color: '#3498DB' }}>
+                    <TableCell sx={{ 
+                      fontWeight: 600, 
+                      color: '#3498DB',
+                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                    }}>
                       {ticket.ticket_number}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: '#2C3E50' }}>
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: 500, 
+                        color: '#2C3E50',
+                        fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                      }}>
                         {ticket.subject}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ width: 24, height: 24, bgcolor: '#3498DB', fontSize: '0.8rem' }}>
+                        <Avatar sx={{ 
+                          width: { xs: 20, sm: 24 }, 
+                          height: { xs: 20, sm: 24 }, 
+                          bgcolor: '#3498DB', 
+                          fontSize: { xs: '0.7rem', sm: '0.8rem' }
+                        }}>
                           {ticket.pwd_member?.firstName?.charAt(0) || 'P'}
                         </Avatar>
-                        <Typography variant="body2" sx={{ color: '#2C3E50' }}>
+                        <Typography variant="body2" sx={{ 
+                          color: '#2C3E50',
+                          fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.875rem' }
+                        }}>
                           {ticket.pwd_member ? `${ticket.pwd_member.firstName} ${ticket.pwd_member.lastName}` : 'PWD Member'}
                         </Typography>
                       </Box>
@@ -386,7 +471,8 @@ const AdminSupportDesk = () => {
                           backgroundColor: '#E8F4FD',
                           color: '#3498DB',
                           fontWeight: 600,
-                          fontSize: '0.7rem',
+                          fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                          height: { xs: '20px', sm: '24px' },
                           '& .MuiChip-label': {
                             color: '#3498DB'
                           }
@@ -401,7 +487,8 @@ const AdminSupportDesk = () => {
                           backgroundColor: '#FFF3E0',
                           color: '#F39C12',
                           fontWeight: 600,
-                          fontSize: '0.7rem',
+                          fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                          height: { xs: '20px', sm: '24px' },
                           '& .MuiChip-label': {
                             color: '#F39C12'
                           }
@@ -416,31 +503,45 @@ const AdminSupportDesk = () => {
                           backgroundColor: '#E8F5E8',
                           color: '#27AE60',
                           fontWeight: 600,
-                          fontSize: '0.7rem',
+                          fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                          height: { xs: '20px', sm: '24px' },
                           '& .MuiChip-label': {
                             color: '#27AE60'
                           }
                         }}
                       />
                     </TableCell>
-                    <TableCell sx={{ color: '#7F8C8D', fontSize: '0.9rem' }}>
+                    <TableCell sx={{ 
+                      color: '#7F8C8D', 
+                      fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.9rem' }
+                    }}>
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 } }}>
                         <IconButton
                           size="small"
                           onClick={() => handleViewTicket(ticket)}
-                          sx={{ color: '#3498DB' }}
+                          sx={{ 
+                            color: '#3498DB',
+                            '& .MuiSvgIcon-root': {
+                              fontSize: { xs: '16px', sm: '18px' }
+                            }
+                          }}
                         >
-                          <Visibility sx={{ fontSize: 18 }} />
+                          <Visibility />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleReplyTicket(ticket)}
-                          sx={{ color: '#27AE60' }}
+                          sx={{ 
+                            color: '#27AE60',
+                            '& .MuiSvgIcon-root': {
+                              fontSize: { xs: '16px', sm: '18px' }
+                            }
+                          }}
                         >
-                          <Reply sx={{ fontSize: 18 }} />
+                          <Reply />
                         </IconButton>
                       </Box>
                     </TableCell>
@@ -453,11 +554,23 @@ const AdminSupportDesk = () => {
         </Paper>
 
         {/* View Ticket Dialog */}
-        <Dialog open={viewDialog} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>
+        <Dialog 
+          open={viewDialog} 
+          onClose={handleCloseViewDialog} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: { xs: 0, sm: 2 },
+              m: { xs: 0, sm: 2 }
+            }
+          }}
+        >
           <DialogTitle sx={{ 
             backgroundColor: '#2C3E50',
             color: 'white !important', 
             fontWeight: 600,
+            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
@@ -476,6 +589,7 @@ const AdminSupportDesk = () => {
             sx={{ 
               backgroundColor: '#2C3E50 !important',
               color: 'white !important',
+              p: { xs: 2, sm: 3 },
               '& *': { 
                 color: 'white !important',
                 '& .MuiTypography-root': { color: 'white !important' },
@@ -497,23 +611,39 @@ const AdminSupportDesk = () => {
             }}
           >
             {selectedTicket && (
-              <Box sx={{ mt: 1 }}>
+              <Box sx={{ mt: { xs: 0.5, sm: 1 } }}>
                 {/* Ticket Header */}
-                <Box sx={{ mb: 3 }}>
+                <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                   <Typography 
                     variant="h5" 
-                    sx={{ fontWeight: 700, color: 'white !important', mb: 2, backgroundColor: '#3498DB', p: 1, borderRadius: 1 }}
+                    sx={{ 
+                      fontWeight: 700, 
+                      color: 'white !important', 
+                      mb: { xs: 1, sm: 2 }, 
+                      backgroundColor: '#3498DB', 
+                      p: { xs: 0.8, sm: 1 }, 
+                      borderRadius: 1,
+                      fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' }
+                    }}
                     style={{ color: 'white' }}
                   >
                     {selectedTicket.subject}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: { xs: 0.5, sm: 1 }, 
+                    mb: { xs: 1, sm: 2 },
+                    flexWrap: 'wrap'
+                  }}>
                     <Chip
                       label={selectedTicket.category}
+                      size="small"
                       sx={{
                         color: 'white',
                         backgroundColor: '#3498DB',
                         fontWeight: 600,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                        height: { xs: '20px', sm: '24px' },
                         '& .MuiChip-label': {
                           color: 'white'
                         }
@@ -521,10 +651,13 @@ const AdminSupportDesk = () => {
                     />
                     <Chip
                       label={selectedTicket.priority}
+                      size="small"
                       sx={{
                         color: 'white',
                         backgroundColor: '#3498DB',
                         fontWeight: 600,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                        height: { xs: '20px', sm: '24px' },
                         '& .MuiChip-label': {
                           color: 'white'
                         }
@@ -532,10 +665,13 @@ const AdminSupportDesk = () => {
                     />
                     <Chip
                       label={selectedTicket.status}
+                      size="small"
                       sx={{
                         color: 'white',
                         backgroundColor: '#3498DB',
                         fontWeight: 600,
+                        fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                        height: { xs: '20px', sm: '24px' },
                         '& .MuiChip-label': {
                           color: 'white'
                         }
@@ -814,13 +950,32 @@ const AdminSupportDesk = () => {
               </Box>
             )}
           </DialogContent>
-          <DialogActions sx={{ p: 2, backgroundColor: '#2C3E50' }}>
-            <Button onClick={handleCloseViewDialog} sx={{ color: 'white' }}>Close</Button>
+          <DialogActions sx={{ 
+            p: { xs: 2, sm: 3 }, 
+            backgroundColor: '#2C3E50',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: { xs: 1, sm: 2 }
+          }}>
+            <Button 
+              onClick={handleCloseViewDialog} 
+              sx={{ 
+                color: 'white',
+                fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                py: { xs: 1.5, sm: 1 }
+              }}
+            >
+              Close
+            </Button>
             <Button 
               onClick={handleSubmitReply}
               variant="contained"
               disabled={!replyText.trim()}
               startIcon={<Reply />}
+              sx={{
+                fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                py: { xs: 1.5, sm: 1 }
+              }}
             >
               Send Reply
             </Button>

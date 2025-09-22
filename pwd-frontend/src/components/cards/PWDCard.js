@@ -27,7 +27,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Collapse,
+  Collapse
 } from '@mui/material';
 import {
   CreditCard as CreditCardIcon,
@@ -38,7 +38,7 @@ import {
   Person as PersonIcon,
   Edit as EditIcon,
   FilterList as FilterListIcon,
-  Clear as ClearIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminSidebar from '../shared/AdminSidebar';
@@ -68,6 +68,12 @@ function PWDCard() {
       const response = await pwdMemberService.getAll();
       const members = response.data?.members || response.members || [];
       
+      // Debug: Log the raw API response
+      console.log('=== API Response Debug ===');
+      console.log('Raw API response:', response);
+      console.log('Members from API:', members);
+      console.log('First member with ID pictures:', members.find(m => m.idPictures));
+      
       // Transform the data to match our expected format
       const transformedMembers = members.map((member, index) => ({
         id: member.pwd_id || `PWD-2025-${String(index + 1).padStart(6, '0')}`,
@@ -84,7 +90,8 @@ function PWDCard() {
         address: member.address,
         contactNumber: member.contactNumber || member.phone,
         gender: member.gender || member.sex,
-        bloodType: member.bloodType
+        bloodType: member.bloodType,
+        idPictures: member.idPictures // Add ID pictures to the transformation
       }));
       
       // If no members from API, use mock data for demonstration
@@ -383,13 +390,26 @@ function PWDCard() {
   });
 
   const selectedMemberData = pwdMembers.find(member => member.id === selectedMember) || pwdMembers[0];
+  
+  // Debug member selection
+  console.log('=== Member Selection Debug ===');
+  console.log('Selected Member ID:', selectedMember);
+  console.log('Available Members:', pwdMembers.map(m => ({ id: m.id, name: `${m.firstName} ${m.lastName}`, hasIdPictures: !!m.idPictures })));
+  console.log('Selected Member Data:', selectedMemberData);
 
   // Show loading state
   if (loading) {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
         <AdminSidebar />
-        <Box sx={{ flexGrow: 1, p: 3, ml: '280px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Box sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          ml: '280px',
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center'
+        }}>
           <Box sx={{ textAlign: 'center' }}>
             <CircularProgress size={60} sx={{ color: '#0b87ac', mb: 2 }} />
             <Typography variant="h6" color="text.secondary">
@@ -406,7 +426,11 @@ function PWDCard() {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
         <AdminSidebar />
-        <Box sx={{ flexGrow: 1, p: 3, ml: '280px' }}>
+        <Box sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          ml: '280px'
+        }}>
           <Alert 
             severity="error" 
             action={
@@ -433,7 +457,14 @@ function PWDCard() {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
         <AdminSidebar />
-        <Box sx={{ flexGrow: 1, p: 3, ml: '280px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Box sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          ml: '280px',
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center'
+        }}>
           <Box sx={{ textAlign: 'center' }}>
             <CreditCardIcon sx={{ fontSize: 60, color: '#BDC3C7', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
@@ -462,25 +493,27 @@ function PWDCard() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F8F9FA' }}>
-      {/* Original Admin Sidebar */}
       <AdminSidebar />
 
       {/* Main Content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          ml: '280px', // Account for sidebar width
-        }}
-      >
+      <Box sx={{ 
+        flexGrow: 1, 
+        p: 3, 
+        ml: '280px'
+      }}>
         <Container maxWidth="xl">
           {/* Page Header */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#0b87ac', mb: 1 }}>
+            <Typography variant="h4" sx={{ 
+              fontWeight: 'bold', 
+              color: '#0b87ac', 
+              mb: 1
+            }}>
               PWD Card
             </Typography>
-            <Typography variant="body1" sx={{ color: '#7F8C8D' }}>
+            <Typography variant="body1" sx={{ 
+              color: '#7F8C8D'
+            }}>
               View and manage PWD ID cards for members.
             </Typography>
           </Box>
@@ -524,7 +557,7 @@ function PWDCard() {
                         value={filters.search}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
                         sx={{ 
-                          width: 200,
+                          width: { xs: 150, sm: 180, md: 200 },
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: 'rgba(255,255,255,0.1)',
                             borderRadius: 2,
@@ -801,7 +834,8 @@ function PWDCard() {
                       overflow: 'auto',
                       boxShadow: 'none',
                       minHeight: 0,
-                      backgroundColor: 'white'
+                      backgroundColor: 'white',
+                      overflowX: 'auto'
                     }}
                   >
                     <Table stickyHeader>
@@ -1055,7 +1089,7 @@ function PWDCard() {
                       gap: 1.5,
                       flexShrink: 0
                     }}>
-                        {/* Photo Placeholder */}
+                        {/* ID Picture */}
                         <Box sx={{
                           width: 70,
                           height: 70,
@@ -1064,18 +1098,74 @@ function PWDCard() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          border: '2px dashed #BDC3C7'
+                          border: '2px solid #BDC3C7',
+                          overflow: 'hidden',
+                          position: 'relative'
                         }}>
-                          <Typography variant="caption" sx={{ 
-                            color: '#FFFFFF', 
-                            textAlign: 'center', 
-                            fontSize: '8px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.3px'
-                          }}>
-                            PHOTO
-                          </Typography>
-                    </Box>
+                          {(() => {
+                            // Debug logging
+                            console.log('=== ID Picture Debug ===');
+                            console.log('Selected Member:', selectedMemberData?.firstName, selectedMemberData?.lastName);
+                            console.log('ID Pictures raw:', selectedMemberData?.idPictures);
+                            
+                            if (!selectedMemberData?.idPictures) {
+                              console.log('No ID pictures found');
+                              return null;
+                            }
+                            
+                            let imagePath = null;
+                            
+                            // Handle different data formats
+                            if (Array.isArray(selectedMemberData.idPictures)) {
+                              imagePath = selectedMemberData.idPictures[0];
+                              console.log('Array format - first image:', imagePath);
+                            } else if (typeof selectedMemberData.idPictures === 'string') {
+                              try {
+                                const parsed = JSON.parse(selectedMemberData.idPictures);
+                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                  imagePath = parsed[0];
+                                  console.log('String format - parsed first image:', imagePath);
+                                }
+                              } catch (e) {
+                                console.error('Failed to parse idPictures string:', e);
+                                return null;
+                              }
+                            }
+                            
+                            if (imagePath) {
+                              const fullUrl = `http://127.0.0.1:8000/storage/${imagePath}`;
+                              console.log('Final image URL:', fullUrl);
+                              
+                              return (
+                                <img
+                                  src={fullUrl}
+                                  alt="ID Picture"
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    borderRadius: '4px',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0
+                                  }}
+                                  onError={(e) => {
+                                    console.error('Image load error for:', fullUrl);
+                                    e.target.style.display = 'none';
+                                  }}
+                                  onLoad={() => {
+                                    console.log('Image loaded successfully:', fullUrl);
+                                  }}
+                                />
+                              );
+                            }
+                            
+                            console.log('No valid image path found');
+                            return null;
+                          })()}
+                          
+                          {/* Empty placeholder - no text */}
+                        </Box>
 
                     {/* QR Code */}
                     {qrCodeDataURL && (
@@ -1188,7 +1278,34 @@ function PWDCard() {
                           Address:
                         </Typography>
                         <Typography variant="body2" sx={{ color: '#FFFFFF', fontSize: '14px' }}>
-                          {selectedMemberData.address || '#24 Purok 4, Brgy. Mamatid, City of Cabuyao, Laguna'}
+                          {(() => {
+                            const addressParts = [];
+                            
+                            // Add complete address if available
+                            if (selectedMemberData.address) {
+                              addressParts.push(selectedMemberData.address);
+                            }
+                            
+                            // Add barangay if available
+                            if (selectedMemberData.barangay && selectedMemberData.barangay !== 'N/A') {
+                              addressParts.push(selectedMemberData.barangay);
+                            }
+                            
+                            // Add city (default to Cabuyao if not specified)
+                            const city = selectedMemberData.city && selectedMemberData.city !== 'N/A' 
+                              ? selectedMemberData.city 
+                              : 'Cabuyao';
+                            addressParts.push(city);
+                            
+                            // Add province (default to Laguna if not specified)
+                            const province = selectedMemberData.province && selectedMemberData.province !== 'N/A' 
+                              ? selectedMemberData.province 
+                              : 'Laguna';
+                            addressParts.push(province);
+                            
+                            // Join all parts with commas and return
+                            return addressParts.length > 0 ? addressParts.join(', ') : 'No address provided';
+                          })()}
                         </Typography>
                       </Box>
                       

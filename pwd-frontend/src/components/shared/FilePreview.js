@@ -278,8 +278,9 @@ const FilePreview = ({ open, onClose, messageId, fileName, fileType, fileSize })
     <Dialog 
       open={open} 
       onClose={handleClose} 
-      maxWidth="md" 
+      maxWidth="xl" 
       fullWidth
+      fullScreen={false}
       sx={{
         '& .MuiDialog-paper': {
           borderRadius: 2,

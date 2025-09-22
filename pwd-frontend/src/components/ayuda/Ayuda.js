@@ -27,6 +27,7 @@ import {
   RadioGroup,
   Radio,
   FormControlLabel,
+  Checkbox,
   IconButton,
   Alert,
   Tabs,
@@ -55,7 +56,9 @@ import {
   PendingActions,
   Upload,
   Description,
-  Approval
+  Approval,
+  PictureAsPdf,
+  Menu as MenuIcon
 } from '@mui/icons-material';
 import AdminSidebar from '../shared/AdminSidebar';
 import pwdMemberService from '../../services/pwdMemberService';
@@ -72,9 +75,9 @@ const Ayuda = () => {
   const [openApprovalDialog, setOpenApprovalDialog] = useState(false);
   const [eligibleMembers, setEligibleMembers] = useState([]);
   const [loadingEligibleMembers, setLoadingEligibleMembers] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: '',
     type: '',
     amount: '',
     description: '',
@@ -83,12 +86,36 @@ const Ayuda = () => {
     expiryDate: '',
     birthdayMonth: '',
     barangay: '',
+    selectedBarangays: [], // For Financial Assistance - multiple barangays
     quarter: '',
     quarterly: '',
     status: 'Active'
   });
 
   const distributionHistory = [];
+
+
+  const handleStatusChange = async (benefitId, newStatus) => {
+    try {
+      const updatedBenefits = benefits.map(benefit => 
+        benefit.id === benefitId ? { ...benefit, status: newStatus } : benefit
+      );
+      setBenefits(updatedBenefits);
+      
+      // Update in localStorage
+      localStorage.setItem('benefits', JSON.stringify(updatedBenefits));
+      
+      // Update in database if using benefitService
+      try {
+        await benefitService.update(benefitId, { status: newStatus });
+      } catch (dbError) {
+        console.warn('Failed to update benefit status in database:', dbError);
+        // Continue with localStorage update
+      }
+    } catch (error) {
+      console.error('Error updating benefit status:', error);
+    }
+  };
 
   const handleOpenDialog = (benefit = null) => {
     if (benefit) {
@@ -99,7 +126,6 @@ const Ayuda = () => {
     } else {
       setEditingBenefit(null);
       setFormData({
-        title: '',
         type: '',
         amount: '',
         description: '',
@@ -108,6 +134,7 @@ const Ayuda = () => {
         expiryDate: '',
         birthdayMonth: '',
         barangay: '',
+        selectedBarangays: [], // For Financial Assistance - multiple barangays
         quarter: '',
         quarterly: '',
         status: 'Active'
@@ -163,18 +190,29 @@ const Ayuda = () => {
 
   // Effect to fetch eligible members when benefit type, month/quarter, and barangay change
   useEffect(() => {
-    if (formData.type === 'Financial Assistance' && formData.quarter && formData.quarter !== 'All Months') {
-      fetchEligibleMembers('Financial Assistance', formData.quarter, formData.barangay);
+    if (formData.type === 'Financial Assistance' && formData.selectedBarangays.length > 0) {
+      fetchEligibleMembers('Financial Assistance', null, formData.selectedBarangays);
     } else if (formData.type === 'Birthday Cash Gift' && formData.birthdayMonth) {
       fetchEligibleMembers('Birthday Cash Gift', formData.birthdayMonth, formData.barangay);
     } else {
       setEligibleMembers([]);
     }
-  }, [formData.type, formData.quarter, formData.birthdayMonth, formData.barangay]);
+  }, [formData.type, formData.birthdayMonth, formData.barangay, formData.selectedBarangays]);
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingBenefit(null);
+  };
+
+  const handleBarangaySelection = (barangay) => {
+    if (formData.type === 'Financial Assistance') {
+      const updatedBarangays = formData.selectedBarangays.includes(barangay)
+        ? formData.selectedBarangays.filter(b => b !== barangay)
+        : [...formData.selectedBarangays, barangay];
+      setFormData({ ...formData, selectedBarangays: updatedBarangays });
+    } else {
+      setFormData({ ...formData, barangay });
+    }
   };
 
   const handleDeleteBenefit = async (benefitId) => {
@@ -218,7 +256,6 @@ const Ayuda = () => {
           benefit.id === editingBenefit.id 
             ? { 
                 ...benefit, 
-                title: formData.title,
                 type: formData.type,
                 amount: formData.amount,
                 description: formData.description,
@@ -226,6 +263,7 @@ const Ayuda = () => {
                 distributionDate: formData.distributionDate,
                 expiryDate: formData.expiryDate,
                 barangay: formData.barangay,
+                selectedBarangays: formData.selectedBarangays,
                 quarter: formData.quarter,
                 quarterly: formData.quarterly,
                 status: formData.status
@@ -243,10 +281,26 @@ const Ayuda = () => {
     } else {
       // Add new benefit to pending schedules
       try {
+        // Check if there are eligible members and generate PDF first
+        if (eligibleMembers.length > 0) {
+          const confirmGeneratePDF = window.confirm(
+            `This benefit program has ${eligibleMembers.length} eligible members. ` +
+            'A PDF with the eligible members list and signature spaces will be generated. ' +
+            'You must print this PDF and get signatures from the Head of PDAO Office, Barangay President, and Mayor before the program can be approved. ' +
+            'Do you want to continue?'
+          );
+          
+          if (!confirmGeneratePDF) {
+            return; // User cancelled, don't proceed with submission
+          }
+          
+          // Generate PDF automatically
+          await generateEligibleMembersPDF();
+        }
+        
         const newPendingSchedule = {
           id: pendingSchedules.length > 0 ? Math.max(...pendingSchedules.map(p => p.id), 0) + 1 : 1,
-          title: formData.title,
-          name: formData.title, // Keep name for backward compatibility
+          name: formData.type, // Use type as name for backward compatibility
           type: formData.type,
           amount: formData.amount,
           description: formData.description,
@@ -254,6 +308,7 @@ const Ayuda = () => {
           distributionDate: formData.distributionDate,
           expiryDate: formData.expiryDate,
           barangay: formData.barangay,
+          selectedBarangays: formData.selectedBarangays,
           quarter: formData.quarter,
           quarterly: formData.quarterly,
           status: 'Pending Approval',
@@ -268,7 +323,12 @@ const Ayuda = () => {
         setPendingSchedules(updatedPendingSchedules);
         // Save to localStorage
         localStorage.setItem('pendingSchedules', JSON.stringify(updatedPendingSchedules));
-        alert('Benefit program submitted for approval!');
+        
+        if (eligibleMembers.length > 0) {
+          alert('Benefit program submitted for approval! Please print the generated PDF and get the required signatures before the program can be approved.');
+        } else {
+          alert('Benefit program submitted for approval!');
+        }
       } catch (error) {
         console.error('Error creating benefit:', error);
         alert('Failed to create benefit program: ' + (error.message || 'Unknown error'));
@@ -334,6 +394,152 @@ const Ayuda = () => {
       } else {
         alert('Please upload only image files (JPG, PNG) or PDF files.');
       }
+    }
+  };
+
+  const generateEligibleMembersPDF = async () => {
+    if (eligibleMembers.length === 0) {
+      alert('No eligible members to generate PDF for.');
+      return;
+    }
+
+    try {
+      setGeneratingPDF(true);
+      
+      // Debug: Log the eligible members being used for PDF
+      console.log('Generating PDF for eligible members:', eligibleMembers);
+      console.log('Number of eligible members:', eligibleMembers.length);
+      
+      // Dynamically import jsPDF
+      const { jsPDF } = await import('jspdf');
+      const { autoTable } = await import('jspdf-autotable');
+      
+      const doc = new jsPDF('portrait', 'mm', 'a4');
+      
+      // Add header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CABUYAO PDAO RMS', 20, 20);
+      
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Eligible Members List for Benefit Program', 20, 30);
+      
+      // Add benefit program details
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Program: ${formData.type}`, 20, 45);
+      doc.text(`Type: ${formData.type}`, 20, 52);
+      doc.text(`Amount: ${formData.amount}`, 20, 59);
+      if (formData.type === 'Financial Assistance' && formData.selectedBarangays.length > 0) {
+        doc.text(`Barangays: ${formData.selectedBarangays.join(', ')}`, 20, 66);
+      } else {
+        doc.text(`Barangay: ${formData.barangay || 'All Barangays'}`, 20, 66);
+      }
+      
+      if (formData.type === 'Birthday Cash Gift' && formData.birthdayMonth) {
+        doc.text(`Birthday Quarter: ${getQuarterName(formData.birthdayMonth)}`, 20, 73);
+      }
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 85);
+      doc.text(`Total Eligible Members: ${eligibleMembers.length}`, 20, 92);
+      
+      // Prepare table data - ensure we're using the current eligibleMembers
+      const tableData = eligibleMembers.map((member, index) => [
+        index + 1,
+        member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned'),
+        `${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided',
+        getMonthName(new Date(member.birthDate).getMonth() + 1),
+        getAge(member.birthDate),
+        member.barangay || 'Not specified',
+        member.disabilityType || 'Not specified'
+      ]);
+      
+      // Debug: Log the table data being generated
+      console.log('Table data for PDF:', tableData);
+      
+      // Add table
+      autoTable(doc, {
+        startY: 100,
+        head: [['#', 'PWD ID', 'Full Name', 'Birth Month', 'Age', 'Barangay', 'Disability Type']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [39, 174, 96], // Green color
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [44, 62, 80]
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        margin: { left: 20, right: 20 },
+        styles: {
+          cellPadding: 3,
+          lineColor: [224, 224, 224],
+          lineWidth: 0.5
+        }
+      });
+      
+      // Add signature section
+      const finalY = doc.lastAutoTable.finalY + 20;
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SIGNATURES REQUIRED', 20, finalY);
+      
+      // Add signature lines
+      const signatureY = finalY + 20;
+      const signatureWidth = 50;
+      const signatureSpacing = 60;
+      
+      // Head of PDAO Office
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Head of PDAO Office', 20, signatureY);
+      doc.line(20, signatureY + 2, 20 + signatureWidth, signatureY + 2);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Signature over Printed Name', 20, signatureY + 8);
+      doc.text('Date: _______________', 20, signatureY + 15);
+      
+      // Barangay President
+      doc.setFont('helvetica', 'bold');
+      doc.text('Barangay President', 20 + signatureSpacing, signatureY);
+      doc.line(20 + signatureSpacing, signatureY + 2, 20 + signatureSpacing + signatureWidth, signatureY + 2);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Signature over Printed Name', 20 + signatureSpacing, signatureY + 8);
+      doc.text('Date: _______________', 20 + signatureSpacing, signatureY + 15);
+      
+      // Mayor
+      doc.setFont('helvetica', 'bold');
+      doc.text('Mayor', 20 + (signatureSpacing * 2), signatureY);
+      doc.line(20 + (signatureSpacing * 2), signatureY + 2, 20 + (signatureSpacing * 2) + signatureWidth, signatureY + 2);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Signature over Printed Name', 20 + (signatureSpacing * 2), signatureY + 8);
+      doc.text('Date: _______________', 20 + (signatureSpacing * 2), signatureY + 15);
+      
+      // Add footer
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.text('This document must be signed by all three officials before the benefit program can be approved.', 20, signatureY + 35);
+      
+      // Save the PDF
+      const fileName = `Eligible_Members_${formData.type.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      alert(`PDF generated successfully with ${eligibleMembers.length} eligible members! Please print and get the required signatures before submitting for approval.`);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF: ' + (error.message || 'Unknown error'));
+    } finally {
+      setGeneratingPDF(false);
     }
   };
 
@@ -427,7 +633,7 @@ const Ayuda = () => {
           <div class="benefit-info">
             <div class="info-row">
               <div class="info-label">Program Name:</div>
-              <div class="info-value">${benefit.title || benefit.name}</div>
+              <div class="info-value">${benefit.name || benefit.type}</div>
             </div>
             <div class="info-row">
               <div class="info-label">Type:</div>
@@ -447,8 +653,8 @@ const Ayuda = () => {
             </div>
             ${benefit.type === 'Financial Assistance' ? `
             <div class="info-row">
-              <div class="info-label">Month:</div>
-              <div class="info-value">${benefit.quarter || 'All Months'}</div>
+              <div class="info-label">Barangays:</div>
+              <div class="info-value">${benefit.selectedBarangays && benefit.selectedBarangays.length > 0 ? benefit.selectedBarangays.join(', ') : 'All Barangays'}</div>
             </div>
             ` : ''}
             ${benefit.type === 'Birthday Cash Gift' ? `
@@ -509,8 +715,8 @@ const Ayuda = () => {
   };
 
   // Fetch and filter eligible members based on benefit type, month/quarter, and barangay
-  const fetchEligibleMembers = async (benefitType, monthOrQuarter, barangay) => {
-    if (!benefitType || !monthOrQuarter) {
+  const fetchEligibleMembers = async (benefitType, monthOrQuarter, barangayOrBarangays) => {
+    if (!benefitType) {
       setEligibleMembers([]);
       return;
     }
@@ -520,30 +726,24 @@ const Ayuda = () => {
       const response = await pwdMemberService.getAll();
       const members = response.data?.members || response.members || [];
       
+      // Debug: Log the raw data fetched
+      console.log('Raw members data fetched:', members);
+      console.log('Number of raw members:', members.length);
+      
       let filteredMembers = [];
 
       if (benefitType === 'Financial Assistance') {
-        // Filter by specific month
-        const monthMap = {
-          'January': 1, 'February': 2, 'March': 3, 'April': 4,
-          'May': 5, 'June': 6, 'July': 7, 'August': 8,
-          'September': 9, 'October': 10, 'November': 11, 'December': 12
-        };
-        
-        const targetMonth = monthMap[monthOrQuarter];
-        
-        filteredMembers = members.filter(member => {
-          if (!member.birthDate) return false;
-          const birthMonth = new Date(member.birthDate).getMonth() + 1;
-          const monthMatch = birthMonth === targetMonth;
-          
-          // Filter by barangay if specified
-          if (barangay && barangay !== 'All Barangays') {
-            return monthMatch && member.barangay === barangay;
-          }
-          
-          return monthMatch;
-        });
+        // For Financial Assistance, filter by selected barangays (all members from those barangays)
+        if (Array.isArray(barangayOrBarangays) && barangayOrBarangays.length > 0) {
+          console.log('Filtering Financial Assistance by barangays:', barangayOrBarangays);
+          filteredMembers = members.filter(member => {
+            const isIncluded = barangayOrBarangays.includes(member.barangay);
+            console.log(`Member ${member.firstName} ${member.lastName} from ${member.barangay}: ${isIncluded ? 'INCLUDED' : 'EXCLUDED'}`);
+            return isIncluded;
+          });
+        } else {
+          filteredMembers = members; // Show all members if no specific barangays selected
+        }
       } else if (benefitType === 'Birthday Cash Gift') {
         // Filter by quarter
         const quarterMonths = {
@@ -561,13 +761,17 @@ const Ayuda = () => {
           const quarterMatch = eligibleMonths.includes(birthMonth);
           
           // Filter by barangay if specified
-          if (barangay && barangay !== 'All Barangays') {
-            return quarterMatch && member.barangay === barangay;
+          if (barangayOrBarangays && barangayOrBarangays !== 'All Barangays') {
+            return quarterMatch && member.barangay === barangayOrBarangays;
           }
           
           return quarterMatch;
         });
       }
+
+      // Debug: Log the filtered results
+      console.log('Filtered members for', benefitType, ':', filteredMembers);
+      console.log('Number of filtered members:', filteredMembers.length);
 
       setEligibleMembers(filteredMembers);
     } catch (error) {
@@ -615,10 +819,21 @@ const Ayuda = () => {
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'white' }}>
       <AdminSidebar />
       
-      <Box sx={{ flex: 1, ml: '280px', width: 'calc(100% - 280px)', p: 3, bgcolor: 'white' }}>
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #E0E0E0', bgcolor: '#FFFFFF' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, color: '#2C3E50' }}>
+      <Box sx={{ 
+        flex: 1, 
+        ml: '280px', 
+        width: 'calc(100% - 280px)', 
+        p: 3, 
+        bgcolor: 'white'
+      }}>
+
+        <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, border: '1px solid #E0E0E0', bgcolor: '#FFFFFF' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+            <Typography variant="h4" component="h1" sx={{ 
+              fontWeight: 700, 
+              color: '#2C3E50',
+              fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' }
+            }}>
               Ayuda & Benefits Management
             </Typography>
             <Button
@@ -868,7 +1083,7 @@ const Ayuda = () => {
                         </Box>
                     </Box>
                     <Typography variant="h6" component="h3" sx={{ fontWeight: 600, mb: 1, color: '#2C3E50', fontSize: '1rem' }}>
-                      {benefit.title || benefit.name}
+                      {benefit.title || benefit.benefitType || benefit.type}
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
                       {benefit.amount}
@@ -876,17 +1091,21 @@ const Ayuda = () => {
                     <Typography variant="body2" sx={{ color: '#2C3E50', mb: 2, lineHeight: 1.5 }}>
                       {benefit.description}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 1, fontWeight: 500 }}>
-                      Barangay: {benefit.barangay || 'All Barangays'}
-                    </Typography>
+                    {benefit.type === 'Financial Assistance' ? (
+                      <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 1, fontWeight: 500 }}>
+                        Barangays: {benefit.selectedBarangays && benefit.selectedBarangays.length > 0 ? benefit.selectedBarangays.join(', ') : 'All Barangays'}
+                      </Typography>
+                    ) : (
+                      <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 1, fontWeight: 500 }}>
+                        Barangay: {benefit.barangay || 'All Barangays'}
+                      </Typography>
+                    )}
                     {benefit.type === 'Birthday Cash Gift' ? (
                       <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 2, fontWeight: 500 }}>
                         Birthday Month Quarter: {benefit.birthdayMonth ? getQuarterName(benefit.birthdayMonth) : 'All Quarters'}
                       </Typography>
                     ) : benefit.type === 'Financial Assistance' ? (
-                      <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 2, fontWeight: 500 }}>
-                        Month: {benefit.quarter || 'All Months'}
-                      </Typography>
+                      null
                     ) : (
                       // No additional fields for other benefit types
                       null
@@ -902,6 +1121,60 @@ const Ayuda = () => {
                           Pending: {benefit.pending}
                         </Typography>
                       </Box>
+                    </Box>
+                    
+                    {/* Status Radio Buttons */}
+                    <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #E0E0E0' }}>
+                      <Typography variant="caption" sx={{ color: '#2C3E50', fontWeight: 600, mb: 1, display: 'block' }}>
+                        Status:
+                      </Typography>
+                      <RadioGroup
+                        row
+                        value={benefit.status}
+                        onChange={(e) => handleStatusChange(benefit.id, e.target.value)}
+                        sx={{ gap: 1 }}
+                      >
+                        <FormControlLabel
+                          value="Active"
+                          control={
+                            <Radio 
+                              size="small" 
+                              sx={{ 
+                                color: '#27AE60',
+                                '&.Mui-checked': { color: '#27AE60' }
+                              }} 
+                            />
+                          }
+                          label={
+                            <Typography variant="caption" sx={{ 
+                              color: benefit.status === 'Active' ? '#27AE60' : '#2C3E50',
+                              fontWeight: benefit.status === 'Active' ? 600 : 400
+                            }}>
+                              Active
+                            </Typography>
+                          }
+                        />
+                        <FormControlLabel
+                          value="Inactive"
+                          control={
+                            <Radio 
+                              size="small" 
+                              sx={{ 
+                                color: '#E74C3C',
+                                '&.Mui-checked': { color: '#E74C3C' }
+                              }} 
+                            />
+                          }
+                          label={
+                            <Typography variant="caption" sx={{ 
+                              color: benefit.status === 'Inactive' ? '#E74C3C' : '#2C3E50',
+                              fontWeight: benefit.status === 'Inactive' ? 600 : 400
+                            }}>
+                              Inactive
+                            </Typography>
+                          }
+                        />
+                      </RadioGroup>
                     </Box>
                   </CardContent>
                 </Card>
@@ -1154,7 +1427,7 @@ const Ayuda = () => {
                             />
                           </Box>
                           <Typography variant="h6" component="h3" sx={{ fontWeight: 600, mb: 1, color: '#2C3E50', fontSize: '1rem' }}>
-                            {schedule.title || schedule.name}
+                            {schedule.name || schedule.type}
                           </Typography>
                           <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3E50', mb: 1 }}>
                             {schedule.amount}
@@ -1162,17 +1435,21 @@ const Ayuda = () => {
                           <Typography variant="body2" sx={{ color: '#2C3E50', mb: 2, lineHeight: 1.5 }}>
                             {schedule.description}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 1, fontWeight: 500 }}>
-                            Barangay: {schedule.barangay || 'All Barangays'}
-                          </Typography>
+                          {schedule.type === 'Financial Assistance' ? (
+                            <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 1, fontWeight: 500 }}>
+                              Barangays: {schedule.selectedBarangays && schedule.selectedBarangays.length > 0 ? schedule.selectedBarangays.join(', ') : 'All Barangays'}
+                            </Typography>
+                          ) : (
+                            <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 1, fontWeight: 500 }}>
+                              Barangay: {schedule.barangay || 'All Barangays'}
+                            </Typography>
+                          )}
                           {schedule.type === 'Birthday Cash Gift' ? (
                             <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 2, fontWeight: 500 }}>
                               Birthday Month Quarter: {schedule.birthdayMonth ? getQuarterName(schedule.birthdayMonth) : 'All Quarters'}
                             </Typography>
                           ) : schedule.type === 'Financial Assistance' ? (
-                            <Typography variant="caption" sx={{ color: '#2C3E50', display: 'block', mb: 2, fontWeight: 500 }}>
-                              Month: {schedule.quarter || 'All Months'}
-                            </Typography>
+                            null
                           ) : (
                             // No additional fields for other benefit types
                             null
@@ -1250,42 +1527,6 @@ const Ayuda = () => {
           </DialogTitle>
           <DialogContent sx={{ p: 4, bgcolor: 'white' }}>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Benefit Title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g., Monthly Financial Assistance"
-                  sx={{
-                    '& .MuiInputLabel-root': {
-                      fontSize: '1.1rem',
-                      fontWeight: 700,
-                      color: '#2C3E50'
-                    },
-                    '& .MuiOutlinedInput-root': {
-                      fontSize: '1rem',
-                      borderRadius: 2,
-                      backgroundColor: '#FFFFFF',
-                      '& fieldset': {
-                        borderColor: '#E0E0E0',
-                        borderWidth: 2
-                      },
-                      '&:hover fieldset': {
-                        borderColor: '#3498DB'
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#27AE60'
-                      }
-                    },
-                    '& .MuiInputBase-input': {
-                      fontSize: '1rem',
-                      padding: '16px 14px',
-                      color: '#2C3E50'
-                    }
-                  }}
-                />
-              </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
@@ -1562,86 +1803,8 @@ const Ayuda = () => {
                   </FormControl>
                 </Grid>
               )}
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel sx={{ 
-                    fontSize: '1.1rem', 
-                    fontWeight: 700, 
-                    color: '#2C3E50'
-                  }}>
-                    Barangay
-                  </InputLabel>
-                  <Select
-                    value={formData.barangay}
-                    label="Barangay"
-                    onChange={(e) => setFormData({ ...formData, barangay: e.target.value })}
-                  sx={{
-                      fontSize: '1rem',
-                      borderRadius: 2,
-                      backgroundColor: '#FFFFFF',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#E0E0E0',
-                        borderWidth: 2
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#3498DB'
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#27AE60'
-                      },
-                      '& .MuiSelect-select': {
-                        padding: '16px 14px',
-                        fontSize: '1rem',
-                        color: '#2C3E50'
-                      },
-                      '& .MuiSelect-icon': {
-                        color: '#2C3E50'
-                      }
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'white',
-                          border: '1px solid #E0E0E0',
-                          borderRadius: 2,
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: '#2C3E50',
-                            fontSize: '1rem',
-                            '&:hover': {
-                              bgcolor: '#f5f5f5'
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#E8F4FD',
-                              '&:hover': {
-                                bgcolor: '#E8F4FD'
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }}
-                  >
-                    <MenuItem value="All Barangays" sx={{ fontSize: '1rem' }}>All Barangays</MenuItem>
-                    <MenuItem value="Banlic" sx={{ fontSize: '1rem' }}>Banlic</MenuItem>
-                    <MenuItem value="Bigaa" sx={{ fontSize: '1rem' }}>Bigaa</MenuItem>
-                    <MenuItem value="Butong" sx={{ fontSize: '1rem' }}>Butong</MenuItem>
-                    <MenuItem value="Casile" sx={{ fontSize: '1rem' }}>Casile</MenuItem>
-                    <MenuItem value="Diezmo" sx={{ fontSize: '1rem' }}>Diezmo</MenuItem>
-                    <MenuItem value="Gulod" sx={{ fontSize: '1rem' }}>Gulod</MenuItem>
-                    <MenuItem value="Mamatid" sx={{ fontSize: '1rem' }}>Mamatid</MenuItem>
-                    <MenuItem value="Marinig" sx={{ fontSize: '1rem' }}>Marinig</MenuItem>
-                    <MenuItem value="Niugan" sx={{ fontSize: '1rem' }}>Niugan</MenuItem>
-                    <MenuItem value="Pittland" sx={{ fontSize: '1rem' }}>Pittland</MenuItem>
-                    <MenuItem value="Pulo" sx={{ fontSize: '1rem' }}>Pulo</MenuItem>
-                    <MenuItem value="Sala" sx={{ fontSize: '1rem' }}>Sala</MenuItem>
-                    <MenuItem value="San Isidro" sx={{ fontSize: '1rem' }}>San Isidro</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              {/* Conditional rendering based on benefit type */}
               {formData.type === 'Financial Assistance' ? (
-                // Show Month radio buttons for Financial Assistance
+                // Show checkboxes for Financial Assistance
                 <Grid item xs={12} md={6}>
                   <FormControl component="fieldset" fullWidth>
                     <Typography variant="h6" sx={{ 
@@ -1650,173 +1813,136 @@ const Ayuda = () => {
                       color: '#2C3E50',
                       mb: 2
                     }}>
-                      Month
+                      Select Barangays (Choose 1-2 barangays per month)
                     </Typography>
-                    <RadioGroup
-                      value={formData.quarter}
-                      onChange={(e) => setFormData({ ...formData, quarter: e.target.value, quarterly: '' })}
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 1,
-                        '& .MuiFormControlLabel-root': {
-                          margin: 0,
-                          '& .MuiRadio-root': {
-                            color: '#3498DB',
-                            '&.Mui-checked': {
-                              color: '#27AE60'
-                            }
-                          },
-                          '& .MuiFormControlLabel-label': {
-                            fontSize: '0.9rem',
-                            color: '#2C3E50',
-                            fontWeight: 500
+                    <Box sx={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: 1,
+                      maxHeight: 200,
+                      overflow: 'auto',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: 2,
+                      p: 2,
+                      bgcolor: '#F8F9FA'
+                    }}>
+                      {['Banlic', 'Bigaa', 'Butong', 'Casile', 'Diezmo', 'Gulod', 'Mamatid', 'Marinig', 'Niugan', 'Pittland', 'Pulo', 'Sala', 'San Isidro'].map((barangay) => (
+                        <FormControlLabel
+                          key={barangay}
+                          control={
+                            <Checkbox
+                              checked={formData.selectedBarangays.includes(barangay)}
+                              onChange={() => handleBarangaySelection(barangay)}
+                              sx={{
+                                color: '#3498DB',
+                                '&.Mui-checked': {
+                                  color: '#27AE60'
+                                }
+                              }}
+                            />
                           }
-                        }
-                      }}
-                    >
-                      <FormControlLabel 
-                        value="All Months" 
-                        control={<Radio />} 
-                        label="All Months" 
-                      />
-                      <FormControlLabel 
-                        value="January" 
-                        control={<Radio />} 
-                        label="January" 
-                      />
-                      <FormControlLabel 
-                        value="February" 
-                        control={<Radio />} 
-                        label="February" 
-                      />
-                      <FormControlLabel 
-                        value="March" 
-                        control={<Radio />} 
-                        label="March" 
-                      />
-                      <FormControlLabel 
-                        value="April" 
-                        control={<Radio />} 
-                        label="April" 
-                      />
-                      <FormControlLabel 
-                        value="May" 
-                        control={<Radio />} 
-                        label="May" 
-                      />
-                      <FormControlLabel 
-                        value="June" 
-                        control={<Radio />} 
-                        label="June" 
-                      />
-                      <FormControlLabel 
-                        value="July" 
-                        control={<Radio />} 
-                        label="July" 
-                      />
-                      <FormControlLabel 
-                        value="August" 
-                        control={<Radio />} 
-                        label="August" 
-                      />
-                      <FormControlLabel 
-                        value="September" 
-                        control={<Radio />} 
-                        label="September" 
-                      />
-                      <FormControlLabel 
-                        value="October" 
-                        control={<Radio />} 
-                        label="October" 
-                      />
-                      <FormControlLabel 
-                        value="November" 
-                        control={<Radio />} 
-                        label="November" 
-                      />
-                      <FormControlLabel 
-                        value="December" 
-                        control={<Radio />} 
-                        label="December" 
-                      />
-                    </RadioGroup>
+                          label={barangay}
+                          sx={{
+                            '& .MuiFormControlLabel-label': {
+                              fontSize: '0.9rem',
+                              color: '#2C3E50',
+                              fontWeight: 500
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    {formData.selectedBarangays.length > 0 && (
+                      <Typography variant="body2" sx={{ color: '#27AE60', fontWeight: 600, mt: 1 }}>
+                        Selected: {formData.selectedBarangays.join(', ')}
+                      </Typography>
+                    )}
                   </FormControl>
                 </Grid>
               ) : (
-                // No additional fields for other benefit types
-                null
-              )}
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel sx={{ 
-                    fontSize: '1.1rem', 
-                    fontWeight: 700, 
-                    color: '#2C3E50'
-                  }}>
-                    Status
-                  </InputLabel>
-                  <Select
-                    value={formData.status}
-                    label="Status"
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    sx={{
-                      fontSize: '1rem',
-                      borderRadius: 2,
-                      backgroundColor: '#FFFFFF',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#E0E0E0',
-                        borderWidth: 2
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#3498DB'
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#27AE60'
-                      },
-                      '& .MuiSelect-select': {
-                        padding: '16px 14px',
+                // Show dropdown for other benefit types
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ 
+                      fontSize: '1.1rem', 
+                      fontWeight: 700, 
+                      color: '#2C3E50'
+                    }}>
+                      Barangay
+                    </InputLabel>
+                    <Select
+                      value={formData.barangay}
+                      label="Barangay"
+                      onChange={(e) => setFormData({ ...formData, barangay: e.target.value })}
+                      sx={{
                         fontSize: '1rem',
-                        color: '#2C3E50'
-                      },
-                      '& .MuiSelect-icon': {
-                        color: '#2C3E50'
-                      }
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          bgcolor: 'white',
-                          border: '1px solid #E0E0E0',
-                          borderRadius: 2,
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                          '& .MuiMenuItem-root': {
-                            color: '#2C3E50',
-                            fontSize: '1rem',
-                            '&:hover': {
-                              bgcolor: '#f5f5f5'
-                            },
-                            '&.Mui-selected': {
-                              bgcolor: '#E8F4FD',
+                        borderRadius: 2,
+                        backgroundColor: '#FFFFFF',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#E0E0E0',
+                          borderWidth: 2
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#3498DB'
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#27AE60'
+                        },
+                        '& .MuiSelect-select': {
+                          padding: '16px 14px',
+                          fontSize: '1rem',
+                          color: '#2C3E50'
+                        },
+                        '& .MuiSelect-icon': {
+                          color: '#2C3E50'
+                        }
+                      }}
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            bgcolor: 'white',
+                            border: '1px solid #E0E0E0',
+                            borderRadius: 2,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            '& .MuiMenuItem-root': {
+                              color: '#2C3E50',
+                              fontSize: '1rem',
                               '&:hover': {
-                                bgcolor: '#E8F4FD'
+                                bgcolor: '#f5f5f5'
+                              },
+                              '&.Mui-selected': {
+                                bgcolor: '#E8F4FD',
+                                '&:hover': {
+                                  bgcolor: '#E8F4FD'
+                                }
                               }
                             }
                           }
                         }
-                      }
-                    }}
-                  >
-                    <MenuItem value="Active" sx={{ fontSize: '1rem' }}>Active</MenuItem>
-                    <MenuItem value="Inactive" sx={{ fontSize: '1rem' }}>Inactive</MenuItem>
-                    <MenuItem value="Suspended" sx={{ fontSize: '1rem' }}>Suspended</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+                      }}
+                    >
+                      <MenuItem value="All Barangays" sx={{ fontSize: '1rem' }}>All Barangays</MenuItem>
+                      <MenuItem value="Banlic" sx={{ fontSize: '1rem' }}>Banlic</MenuItem>
+                      <MenuItem value="Bigaa" sx={{ fontSize: '1rem' }}>Bigaa</MenuItem>
+                      <MenuItem value="Butong" sx={{ fontSize: '1rem' }}>Butong</MenuItem>
+                      <MenuItem value="Casile" sx={{ fontSize: '1rem' }}>Casile</MenuItem>
+                      <MenuItem value="Diezmo" sx={{ fontSize: '1rem' }}>Diezmo</MenuItem>
+                      <MenuItem value="Gulod" sx={{ fontSize: '1rem' }}>Gulod</MenuItem>
+                      <MenuItem value="Mamatid" sx={{ fontSize: '1rem' }}>Mamatid</MenuItem>
+                      <MenuItem value="Marinig" sx={{ fontSize: '1rem' }}>Marinig</MenuItem>
+                      <MenuItem value="Niugan" sx={{ fontSize: '1rem' }}>Niugan</MenuItem>
+                      <MenuItem value="Pittland" sx={{ fontSize: '1rem' }}>Pittland</MenuItem>
+                      <MenuItem value="Pulo" sx={{ fontSize: '1rem' }}>Pulo</MenuItem>
+                      <MenuItem value="Sala" sx={{ fontSize: '1rem' }}>Sala</MenuItem>
+                      <MenuItem value="San Isidro" sx={{ fontSize: '1rem' }}>San Isidro</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
             </Grid>
 
             {/* Eligible Members Table */}
-            {(formData.type === 'Financial Assistance' && formData.quarter && formData.quarter !== 'All Months') ||
+            {(formData.type === 'Financial Assistance' && formData.selectedBarangays.length > 0) ||
              (formData.type === 'Birthday Cash Gift' && formData.birthdayMonth) ? (
               <Box sx={{ mt: 4 }}>
                 <Divider sx={{ mb: 3 }} />
@@ -1830,9 +1956,9 @@ const Ayuda = () => {
                 }}>
                   <People />
                   Eligible Members Preview
-                  {formData.type === 'Financial Assistance' && (
+                  {formData.type === 'Financial Assistance' && formData.selectedBarangays.length > 0 && (
                     <Chip 
-                      label={`${formData.quarter} Birthdays`} 
+                      label={`From ${formData.selectedBarangays.join(', ')}`} 
                       size="small" 
                       sx={{ 
                         bgcolor: '#E8F4FD', 
@@ -1904,7 +2030,10 @@ const Ayuda = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {eligibleMembers.map((member, index) => (
+                        {eligibleMembers.map((member, index) => {
+                          // Debug: Log each member being rendered in the table
+                          console.log(`Rendering member ${index + 1}:`, member);
+                          return (
                           <TableRow 
                             key={member.id} 
                             sx={{ 
@@ -1933,7 +2062,8 @@ const Ayuda = () => {
                               {member.disabilityType || 'Not specified'}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>
@@ -1951,7 +2081,7 @@ const Ayuda = () => {
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#95A5A6' }}>
                       {formData.type === 'Financial Assistance' 
-                        ? `No PWD members have birthdays in ${formData.quarter}${formData.barangay && formData.barangay !== 'All Barangays' ? ` from ${formData.barangay}` : ''}`
+                        ? `No PWD members found in selected barangays: ${formData.selectedBarangays.join(', ')}`
                         : `No PWD members have birthdays in ${getQuarterName(formData.birthdayMonth)}${formData.barangay && formData.barangay !== 'All Barangays' ? ` from ${formData.barangay}` : ''}`
                       }
                     </Typography>
@@ -1968,13 +2098,51 @@ const Ayuda = () => {
                   }}>
                     <Typography variant="body2" sx={{ color: '#27AE60', fontWeight: 600, textAlign: 'center' }}>
                       📊 Total Eligible Members: {eligibleMembers.length}
-                      {formData.barangay && formData.barangay !== 'All Barangays' && (
+                      {formData.type === 'Financial Assistance' && formData.selectedBarangays.length > 0 && (
+                        <span> • From {formData.selectedBarangays.join(', ')}</span>
+                      )}
+                      {formData.type === 'Birthday Cash Gift' && formData.barangay && formData.barangay !== 'All Barangays' && (
                         <span> • From {formData.barangay}</span>
                       )}
                       {formData.amount && (
                         <span> • Estimated Total Cost: ₱{(parseInt(formData.amount.replace(/[₱,]/g, '')) * eligibleMembers.length).toLocaleString()}</span>
                       )}
                     </Typography>
+                  </Box>
+                )}
+
+                {/* PDF Generation Button */}
+                {eligibleMembers.length > 0 && (
+                  <Box sx={{ 
+                    mt: 3, 
+                    display: 'flex', 
+                    justifyContent: 'center',
+                    gap: 2
+                  }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<PictureAsPdf />}
+                      onClick={generateEligibleMembersPDF}
+                      disabled={generatingPDF}
+                      sx={{ 
+                        bgcolor: '#E74C3C',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        px: 4,
+                        py: 1.5,
+                        borderRadius: 2,
+                        fontSize: '1rem',
+                        '&:hover': { 
+                          bgcolor: '#C0392B' 
+                        },
+                        '&:disabled': {
+                          bgcolor: '#BDC3C7',
+                          color: '#7F8C8D'
+                        }
+                      }}
+                    >
+                      {generatingPDF ? 'Generating PDF...' : 'Generate PDF for Signatures'}
+                    </Button>
                   </Box>
                 )}
               </Box>
@@ -2072,7 +2240,7 @@ const Ayuda = () => {
                       Program Title
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', fontWeight: 500 }}>
-                      {selectedPendingSchedule.title || selectedPendingSchedule.name}
+                      {selectedPendingSchedule.name || selectedPendingSchedule.type}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -2091,14 +2259,25 @@ const Ayuda = () => {
                       {selectedPendingSchedule.amount}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 600, mb: 0.5 }}>
-                      Barangay
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#2C3E50', fontWeight: 500 }}>
-                      {selectedPendingSchedule.barangay || 'All Barangays'}
-                    </Typography>
-                  </Grid>
+                  {selectedPendingSchedule.type === 'Financial Assistance' ? (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 600, mb: 0.5 }}>
+                        Barangays
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                        {selectedPendingSchedule.selectedBarangays && selectedPendingSchedule.selectedBarangays.length > 0 ? selectedPendingSchedule.selectedBarangays.join(', ') : 'All Barangays'}
+                      </Typography>
+                    </Grid>
+                  ) : (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 600, mb: 0.5 }}>
+                        Barangay
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: '#2C3E50', fontWeight: 500 }}>
+                        {selectedPendingSchedule.barangay || 'All Barangays'}
+                      </Typography>
+                    </Grid>
+                  )}
                   {selectedPendingSchedule.type === 'Birthday Cash Gift' ? (
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 600, mb: 0.5 }}>
@@ -2109,14 +2288,7 @@ const Ayuda = () => {
                       </Typography>
                     </Grid>
                   ) : selectedPendingSchedule.type === 'Financial Assistance' ? (
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="body2" sx={{ color: '#7F8C8D', fontWeight: 600, mb: 0.5 }}>
-                        Month
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: '#2C3E50', fontWeight: 500 }}>
-                        {selectedPendingSchedule.quarter || 'All Months'}
-                      </Typography>
-                    </Grid>
+                    null
                   ) : (
                     // No additional fields for other benefit types
                     null

@@ -15,7 +15,10 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider
+  Divider,
+  IconButton,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Dashboard,
@@ -28,7 +31,8 @@ import {
   Phone,
   Email,
   AccessTime,
-  ErrorOutline
+  ErrorOutline,
+  Menu
 } from '@mui/icons-material';
 import PWDMemberSidebar from '../shared/PWDMemberSidebar';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,10 +41,17 @@ import { api } from '../../services/api';
 
 function PWDMemberDashboard() {
   const { currentUser } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [announcements, setAnnouncements] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -89,23 +100,59 @@ function PWDMemberDashboard() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F8F9FA' }}>
-      <PWDMemberSidebar />
+      <PWDMemberSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
       
       {/* Main content */}
       <Box sx={{ 
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column', 
-        ml: '280px',
-        width: 'calc(100% - 280px)',
-        p: 3
+        ml: { xs: 0, md: '280px' },
+        width: { xs: '100%', md: 'calc(100% - 280px)' },
+        p: { xs: 1, sm: 2, md: 3 },
+        transition: 'margin-left 0.3s ease-in-out'
       }}>
+        {/* Mobile Menu Button */}
+        <Box sx={{ 
+          display: { xs: 'flex', md: 'none' }, 
+          alignItems: 'center', 
+          mb: 2,
+          p: 1
+        }}>
+          <IconButton
+            onClick={handleSidebarToggle}
+            sx={{
+              color: '#566573',
+              border: '1px solid #D5DBDB',
+              borderRadius: 2,
+              '&:hover': {
+                borderColor: '#253D90',
+                background: '#F4F7FC',
+                color: '#253D90'
+              }
+            }}
+          >
+            <Menu />
+          </IconButton>
+          <Typography variant="h6" sx={{ ml: 2, color: '#000000', fontWeight: 600 }}>
+            PWD Dashboard
+          </Typography>
+        </Box>
+
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#000000', mb: 1 }}>
+        <Box sx={{ mb: { xs: 2, md: 4 } }}>
+          <Typography variant="h3" sx={{ 
+            fontWeight: 'bold', 
+            color: '#000000', 
+            mb: 1,
+            fontSize: { xs: '1.8rem', sm: '2.2rem', md: '2.5rem' }
+          }}>
             Welcome to Your PWD Dashboard
           </Typography>
-          <Typography variant="h6" sx={{ color: '#000000' }}>
+          <Typography variant="h6" sx={{ 
+            color: '#000000',
+            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }
+          }}>
             Access announcements, support services, and manage your PWD benefits.
           </Typography>
         </Box>
@@ -118,7 +165,7 @@ function PWDMemberDashboard() {
         )}
 
         {/* Main Content Grid */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
           {/* Latest Announcements */}
           <Grid item xs={12} md={6}>
             <Paper elevation={0} sx={{
