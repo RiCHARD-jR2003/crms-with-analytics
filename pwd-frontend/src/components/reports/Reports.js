@@ -1108,58 +1108,58 @@ const Reports = () => {
       
       // Fetch barangay performance from API (now includes all barangays)
       try {
-        const barangayPerformanceResponse = await fetch('http://192.168.18.25:8000/api/reports/barangay-performance');
+        const barangayPerformanceResponse = await fetch('http://127.0.0.1:8000/api/reports/barangay-performance');
         if (barangayPerformanceResponse.ok) {
           const barangayData = await barangayPerformanceResponse.json();
           console.log('Barangay Performance API Response:', barangayData);
           setBarangayPerformance(barangayData.barangays || []);
         } else {
           console.error('Barangay Performance API Error:', barangayPerformanceResponse.status);
-          // Use fallback data when API fails - All 18 barangays
+          // Use fallback data when API fails - All 18 barangays with sample data
           const fallbackData = [
-            { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pob. Uno', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pob. Dos', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Sala', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Baclaran', registered: 45, cards: 42, benefits: 38, complaints: 2 },
             { barangay: 'Banaybanay', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Bigaa', registered: 78, cards: 75, benefits: 68, complaints: 1 },
+            { barangay: 'Butong', registered: 32, cards: 30, benefits: 28, complaints: 0 },
             { barangay: 'Casile', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 }
+            { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Gulod', registered: 56, cards: 54, benefits: 48, complaints: 3 },
+            { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Marinig', registered: 89, cards: 85, benefits: 76, complaints: 4 },
+            { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pob. Dos', registered: 23, cards: 22, benefits: 20, complaints: 1 },
+            { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pob. Uno', registered: 67, cards: 64, benefits: 58, complaints: 2 },
+            { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Sala', registered: 41, cards: 39, benefits: 35, complaints: 1 },
+            { barangay: 'San Isidro', registered: 34, cards: 32, benefits: 29, complaints: 0 }
           ];
           setBarangayPerformance(fallbackData);
         }
       } catch (error) {
         console.error('Error fetching barangay performance:', error);
-        // Use fallback data when API fails - All 18 barangays
+        // Use fallback data when API fails - All 18 barangays with sample data
         const fallbackData = [
-          { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pob. Uno', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pob. Dos', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Sala', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Baclaran', registered: 45, cards: 42, benefits: 38, complaints: 2 },
           { barangay: 'Banaybanay', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Bigaa', registered: 78, cards: 75, benefits: 68, complaints: 1 },
+          { barangay: 'Butong', registered: 32, cards: 30, benefits: 28, complaints: 0 },
           { barangay: 'Casile', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 }
+          { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Gulod', registered: 56, cards: 54, benefits: 48, complaints: 3 },
+          { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Marinig', registered: 89, cards: 85, benefits: 76, complaints: 4 },
+          { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pob. Dos', registered: 23, cards: 22, benefits: 20, complaints: 1 },
+          { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pob. Uno', registered: 67, cards: 64, benefits: 58, complaints: 2 },
+          { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Sala', registered: 41, cards: 39, benefits: 35, complaints: 1 },
+          { barangay: 'San Isidro', registered: 34, cards: 32, benefits: 29, complaints: 0 }
         ];
         setBarangayPerformance(fallbackData);
       }
@@ -4004,7 +4004,9 @@ const Reports = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    (barangayPerformance.length > 0 ? barangayPerformance : barangayPerformanceData.barangayRankings).map((row, index) => (
+                    (barangayPerformance.length > 0 ? barangayPerformance : barangayPerformanceData.barangayRankings)
+                      .sort((a, b) => a.barangay.localeCompare(b.barangay))
+                      .map((row, index) => (
                       <TableRow key={row.barangay} sx={{ bgcolor: 'white' }}>
                         <TableCell sx={{ fontWeight: 500, color: '#2C3E50', py: 2, px: 3 }}>{row.barangay}</TableCell>
                         <TableCell sx={{ color: '#2C3E50', fontWeight: 500, py: 2, px: 3 }}>{row.registered}</TableCell>
