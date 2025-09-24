@@ -15,7 +15,6 @@ const BARANGAYS = [
   { name: 'Banlic', lat: 14.2488, lng: 121.1248, color: '#FF6B35' },
   { name: 'Bigaa', lat: 14.2588, lng: 121.1348, color: '#4CAF50' },
   { name: 'Butong', lat: 14.2388, lng: 121.1148, color: '#2196F3' },
-  { name: 'Cabuyao', lat: 14.2488, lng: 121.1248, color: '#9C27B0' },
   { name: 'Casile', lat: 14.2688, lng: 121.1448, color: '#FF9800' },
   { name: 'Diezmo', lat: 14.2288, lng: 121.1048, color: '#F44336' },
   { name: 'Gulod', lat: 14.2788, lng: 121.1548, color: '#00BCD4' },
