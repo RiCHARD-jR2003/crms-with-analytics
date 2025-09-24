@@ -3925,23 +3925,21 @@ const Reports = () => {
           </DialogContent>
           <DialogActions sx={{ ...dialogActionsStyles, bgcolor: 'white', p: 5, m: 1 }}>
             <Button onClick={handleCloseDialog}>Close</Button>
-            {selectedReportData && selectedReportData.reportType !== 'suggestions' && (
-              <Button 
-                variant="outlined" 
-                startIcon={<Psychology />}
-                onClick={handleOpenSuggestionsDialog}
-                sx={{ 
-                  borderColor: '#9B59B6', 
-                  color: '#9B59B6',
-                  '&:hover': { 
-                    borderColor: '#8E44AD', 
-                    bgcolor: '#F8F4FF' 
-                  }
-                }}
-              >
-                Get Suggestions
-              </Button>
-            )}
+            <Button 
+              variant="outlined" 
+              startIcon={<Lightbulb />}
+              onClick={handleOpenSuggestionsDialog}
+              sx={{ 
+                borderColor: '#9B59B6', 
+                color: '#9B59B6',
+                '&:hover': { 
+                  borderColor: '#8E44AD', 
+                  bgcolor: '#F8F4FF' 
+                }
+              }}
+            >
+              Get Suggestions
+            </Button>
             <Button variant="contained" startIcon={<Download />}>
               Download Report
             </Button>
@@ -4082,7 +4080,7 @@ const Reports = () => {
             pb: 2
           }}>
             <Box display="flex" alignItems="center" gap={2}>
-              <Psychology color="primary" />
+              <Lightbulb color="primary" />
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
                 AI Suggestions for {selectedReportData?.title}
               </Typography>
