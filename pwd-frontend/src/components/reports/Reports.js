@@ -407,8 +407,18 @@ const Reports = () => {
         .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
         .slice(0, 10);
       
-      // Calculate average processing time (mock calculation)
-      const averageProcessingTime = 7; // days
+      // Calculate average processing time based on actual data
+      const processingTimes = applications
+        .filter(app => app.status === 'approved' && app.approved_at && app.created_at)
+        .map(app => {
+          const created = new Date(app.created_at);
+          const approved = new Date(app.approved_at);
+          return Math.ceil((approved - created) / (1000 * 60 * 60 * 24)); // days
+        });
+      
+      const averageProcessingTime = processingTimes.length > 0 
+        ? processingTimes.reduce((sum, time) => sum + time, 0) / processingTimes.length 
+        : 0;
       
       setCardDistributionData({
         totalCardsIssued,
@@ -499,9 +509,17 @@ const Reports = () => {
         .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
         .slice(0, 10);
       
-      // Calculate average benefit amount and total value (mock calculations)
-      const averageBenefitAmount = 5000; // PHP
-      const totalBenefitValue = totalBenefitsDistributed * averageBenefitAmount;
+      // Calculate average benefit amount and total value based on actual data
+      const approvedBenefits = benefits.filter(benefit => benefit.status === 'approved');
+      const benefitAmounts = approvedBenefits
+        .map(benefit => parseFloat(benefit.amount || benefit.value || 0))
+        .filter(amount => amount > 0);
+      
+      const averageBenefitAmount = benefitAmounts.length > 0 
+        ? benefitAmounts.reduce((sum, amount) => sum + amount, 0) / benefitAmounts.length 
+        : 0;
+      
+      const totalBenefitValue = benefitAmounts.reduce((sum, amount) => sum + amount, 0);
       
       setBenefitsDistributionData({
         totalBenefitsDistributed,
@@ -576,8 +594,21 @@ const Reports = () => {
         .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
         .slice(0, 10);
       
-      // Calculate average resolution time and resolution rate
-      const averageResolutionTime = 5; // days (mock calculation)
+      // Calculate average resolution time based on actual data
+      const resolvedComplaintsWithDates = complaints.filter(complaint => 
+        complaint.status === 'resolved' && complaint.resolved_at && complaint.created_at
+      );
+      
+      const resolutionTimes = resolvedComplaintsWithDates.map(complaint => {
+        const created = new Date(complaint.created_at);
+        const resolved = new Date(complaint.resolved_at);
+        return Math.ceil((resolved - created) / (1000 * 60 * 60 * 24)); // days
+      });
+      
+      const averageResolutionTime = resolutionTimes.length > 0 
+        ? resolutionTimes.reduce((sum, time) => sum + time, 0) / resolutionTimes.length 
+        : 0;
+      
       const resolutionRate = totalComplaints > 0 ? ((resolvedComplaints / totalComplaints) * 100) : 0;
       
       setComplaintsAnalysisData({
@@ -920,13 +951,34 @@ const Reports = () => {
           (complaints.filter(c => c.status === 'resolved').length / complaints.length) * 100 : 100
       };
       
-      // Year-over-year growth (mock data for now)
+      // Calculate year-over-year growth based on actual data
+      const currentYearData = {
+        registrations: currentYearMembers.length,
+        cardsIssued: currentYearMembers.filter(m => m.pwd_id).length,
+        benefitsDistributed: currentYearBenefits.length,
+        applications: currentYearApplications.length,
+        complaints: currentYearComplaints.length
+      };
+      
+      const previousYearData = {
+        registrations: previousYearMembers.length,
+        cardsIssued: previousYearMembers.filter(m => m.pwd_id).length,
+        benefitsDistributed: previousYearBenefits.length,
+        applications: previousYearApplications.length,
+        complaints: previousYearComplaints.length
+      };
+      
       const yearOverYearGrowth = {
-        registrations: 15.2, // percentage
-        cardsIssued: 12.8,
-        benefitsDistributed: 18.5,
-        applications: 22.1,
-        complaints: -8.3 // negative is good
+        registrations: previousYearData.registrations > 0 ? 
+          ((currentYearData.registrations - previousYearData.registrations) / previousYearData.registrations) * 100 : 0,
+        cardsIssued: previousYearData.cardsIssued > 0 ? 
+          ((currentYearData.cardsIssued - previousYearData.cardsIssued) / previousYearData.cardsIssued) * 100 : 0,
+        benefitsDistributed: previousYearData.benefitsDistributed > 0 ? 
+          ((currentYearData.benefitsDistributed - previousYearData.benefitsDistributed) / previousYearData.benefitsDistributed) * 100 : 0,
+        applications: previousYearData.applications > 0 ? 
+          ((currentYearData.applications - previousYearData.applications) / previousYearData.applications) * 100 : 0,
+        complaints: previousYearData.complaints > 0 ? 
+          ((currentYearData.complaints - previousYearData.complaints) / previousYearData.complaints) * 100 : 0
       };
       
       // Generate achievements, challenges, and recommendations
@@ -998,27 +1050,35 @@ const Reports = () => {
       // Fetch annual summary data
       await fetchAnnualSummaryData();
       
-      // Use mock data instead of API calls for now
-      const mockCityStats = {
-        total_pwd_members: 1250,
-        total_applications: 1180,
-        pending_applications: 45,
-        total_barangays: 6
-      };
+      // Fetch city statistics from API
+      try {
+        const cityStatsResponse = await fetch('http://192.168.18.25:8000/api/city-stats');
+        if (cityStatsResponse.ok) {
+          const cityStatsData = await cityStatsResponse.json();
+          setCityStats(cityStatsData);
+        }
+      } catch (error) {
+        console.error('Error fetching city stats:', error);
+        // Set default values if API fails
+        setCityStats({
+          total_pwd_members: 0,
+          total_applications: 0,
+          pending_applications: 0,
+          total_barangays: 0
+        });
+      }
       
-      const mockBarangayPerformance = {
-        barangays: [
-          { barangay: 'Bigaa', registered: 245, cards: 230, benefits: 180, complaints: 5 },
-          { barangay: 'Butong', registered: 189, cards: 175, benefits: 145, complaints: 3 },
-          { barangay: 'Marinig', registered: 312, cards: 298, benefits: 265, complaints: 8 },
-          { barangay: 'Gulod', registered: 156, cards: 142, benefits: 120, complaints: 2 },
-          { barangay: 'Baclaran', registered: 278, cards: 265, benefits: 230, complaints: 6 },
-          { barangay: 'San Isidro', registered: 198, cards: 185, benefits: 155, complaints: 4 }
-        ]
-      };
-      
-      setCityStats(mockCityStats);
-      setBarangayPerformance(mockBarangayPerformance.barangays);
+      // Fetch barangay performance from API
+      try {
+        const barangayPerformanceResponse = await fetch('http://192.168.18.25:8000/api/barangay-performance');
+        if (barangayPerformanceResponse.ok) {
+          const barangayData = await barangayPerformanceResponse.json();
+          setBarangayPerformance(barangayData.barangays || []);
+        }
+      } catch (error) {
+        console.error('Error fetching barangay performance:', error);
+        setBarangayPerformance([]);
+      }
       
     } catch (error) {
       console.error('Error loading data:', error);
@@ -1036,17 +1096,66 @@ const Reports = () => {
     try {
       setGenerating(prev => ({ ...prev, [reportType]: true }));
       
-      // Simulate report generation with mock data
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
+      // Generate actual report data based on report type
+      let reportData = {};
       
-      const mockReportData = {
-        type: reportType,
-        generatedAt: new Date().toISOString(),
-        data: {
-          totalRecords: Math.floor(Math.random() * 1000) + 100,
-          summary: `Mock ${reportType} report generated successfully`
-        }
-      };
+      switch (reportType) {
+        case 'registration':
+          reportData = {
+            type: 'registration',
+            generatedAt: new Date().toISOString(),
+            data: pwdRegistrationData,
+            summary: `PWD Registration Report generated with ${pwdRegistrationData.totalRegistrations} total registrations`
+          };
+          break;
+        case 'cards':
+          reportData = {
+            type: 'cards',
+            generatedAt: new Date().toISOString(),
+            data: cardDistributionData,
+            summary: `Card Distribution Report generated with ${cardDistributionData.totalCardsIssued} cards issued`
+          };
+          break;
+        case 'benefits':
+          reportData = {
+            type: 'benefits',
+            generatedAt: new Date().toISOString(),
+            data: benefitsDistributionData,
+            summary: `Benefits Distribution Report generated with ${benefitsDistributionData.totalBenefitsDistributed} benefits distributed`
+          };
+          break;
+        case 'complaints':
+          reportData = {
+            type: 'complaints',
+            generatedAt: new Date().toISOString(),
+            data: complaintsAnalysisData,
+            summary: `Complaints Analysis Report generated with ${complaintsAnalysisData.totalComplaints} total complaints`
+          };
+          break;
+        case 'performance':
+          reportData = {
+            type: 'performance',
+            generatedAt: new Date().toISOString(),
+            data: barangayPerformanceData,
+            summary: `Barangay Performance Report generated for ${barangayPerformanceData.totalBarangays} barangays`
+          };
+          break;
+        case 'annual':
+          reportData = {
+            type: 'annual',
+            generatedAt: new Date().toISOString(),
+            data: annualSummaryData,
+            summary: `Annual Summary Report generated for ${annualSummaryData.year}`
+          };
+          break;
+        default:
+          reportData = {
+            type: reportType,
+            generatedAt: new Date().toISOString(),
+            data: {},
+            summary: `${reportType} report generated successfully`
+          };
+      }
       
       setSnackbar({
         open: true,
@@ -1054,7 +1163,7 @@ const Reports = () => {
         severity: 'success'
       });
       
-      console.log('Mock report data:', mockReportData);
+      console.log('Generated report data:', reportData);
       
     } catch (error) {
       console.error('Error generating report:', error);
