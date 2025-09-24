@@ -67,7 +67,11 @@ import {
   DisabilityTypeChart,
   AgeGroupChart,
   MonthlyTrendChart,
-  ServiceUtilizationChart
+  ServiceUtilizationChart,
+  CardStatusChart,
+  BenefitTypeChart,
+  ComplaintStatusChart,
+  AnnualTrendChart
 } from '../charts';
 import { reportsService } from '../../services/reportsService';
 import pwdMemberService from '../../services/pwdMemberService';
@@ -1672,6 +1676,19 @@ const Reports = () => {
     
     return (
       <Box>
+        {/* Data Visualizations */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <CardStatusChart data={cardStatusDistribution} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <BarangayPerformanceChart data={barangayPerformance} />
+          </Grid>
+          <Grid item xs={12}>
+            <MonthlyTrendChart data={monthlyCardTrends} />
+          </Grid>
+        </Grid>
+
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
@@ -1908,6 +1925,19 @@ const Reports = () => {
     
     return (
       <Box>
+        {/* Data Visualizations */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <BenefitTypeChart data={benefitTypeDistribution} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <ServiceUtilizationChart data={benefitsDistributionData} />
+          </Grid>
+          <Grid item xs={12}>
+            <MonthlyTrendChart data={monthlyBenefitsTrends} />
+          </Grid>
+        </Grid>
+
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
@@ -2160,6 +2190,19 @@ const Reports = () => {
     
     return (
       <Box>
+        {/* Data Visualizations */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <ComplaintStatusChart data={complaintTypeDistribution} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <ServiceUtilizationChart data={complaintsAnalysisData} />
+          </Grid>
+          <Grid item xs={12}>
+            <MonthlyTrendChart data={monthlyComplaintsTrends} />
+          </Grid>
+        </Grid>
+
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
@@ -2720,6 +2763,19 @@ const Reports = () => {
     
     return (
       <Box>
+        {/* Data Visualizations */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12}>
+            <AnnualTrendChart data={monthlyTrends} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <BarangayPerformanceChart data={barangayPerformance} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <ServiceUtilizationChart data={annualSummaryData} />
+          </Grid>
+        </Grid>
+
         {/* Year Header */}
         <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2C3E50', mb: 1 }}>

@@ -4,3 +4,7 @@ export { default as DisabilityTypeChart } from './DisabilityTypeChart';
 export { default as AgeGroupChart } from './AgeGroupChart';
 export { default as MonthlyTrendChart } from './MonthlyTrendChart';
 export { default as ServiceUtilizationChart } from './ServiceUtilizationChart';
+export { default as CardStatusChart } from './CardStatusChart';
+export { default as BenefitTypeChart } from './BenefitTypeChart';
+export { default as ComplaintStatusChart } from './ComplaintStatusChart';
+export { default as AnnualTrendChart } from './AnnualTrendChart';
