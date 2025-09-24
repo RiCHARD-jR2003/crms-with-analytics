@@ -274,30 +274,142 @@ class ReportController extends Controller
         }
     }
 
+    public function getAllBarangays(Request $request)
+    {
+        try {
+            // Define all barangays in the system
+            $allBarangays = [
+                'Bigaa',
+                'Butong', 
+                'Marinig',
+                'Gulod',
+                'Baclaran',
+                'San Isidro'
+            ];
+            
+            // Get barangays that have data (from applications, PWD members, etc.)
+            $barangaysWithData = collect();
+            
+            // Get from applications
+            $applicationBarangays = \App\Models\Application::select('barangay')
+                ->distinct()
+                ->whereNotNull('barangay')
+                ->get()
+                ->pluck('barangay')
+                ->unique();
+            
+            // Get from PWD members
+            $pwdMemberBarangays = \App\Models\PWDMember::select('barangay')
+                ->distinct()
+                ->whereNotNull('barangay')
+                ->get()
+                ->pluck('barangay')
+                ->unique();
+            
+            // Get from barangay presidents
+            $presidentBarangays = \App\Models\BarangayPresident::select('barangay')
+                ->distinct()
+                ->whereNotNull('barangay')
+                ->get()
+                ->pluck('barangay')
+                ->unique();
+            
+            // Combine all barangays that have data
+            $barangaysWithData = $applicationBarangays
+                ->merge($pwdMemberBarangays)
+                ->merge($presidentBarangays)
+                ->unique()
+                ->values();
+            
+            // Ensure all predefined barangays are included
+            $allBarangays = collect($allBarangays)
+                ->merge($barangaysWithData)
+                ->unique()
+                ->sort()
+                ->values();
+            
+            return response()->json([
+                'barangays' => $allBarangays,
+                'total' => $allBarangays->count()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function getBarangayPerformance(Request $request)
     {
         try {
-            $barangays = \App\Models\Application::select('barangay')
+            // Define all barangays in the system
+            $allBarangays = [
+                'Bigaa',
+                'Butong', 
+                'Marinig',
+                'Gulod',
+                'Baclaran',
+                'San Isidro'
+            ];
+            
+            // Get barangays that have data (from applications, PWD members, etc.)
+            $barangaysWithData = collect();
+            
+            // Get from applications
+            $applicationBarangays = \App\Models\Application::select('barangay')
                 ->distinct()
+                ->whereNotNull('barangay')
                 ->get()
-                ->map(function($app) {
-                    $barangay = $app->barangay;
-                    return [
-                        'barangay' => $barangay,
-                        'registered' => \App\Models\PWDMember::whereHas('applications', function($query) use ($barangay) {
-                            $query->where('barangay', $barangay)->where('status', 'Approved');
-                        })->count(),
-                        'cards' => \App\Models\PWDMember::whereHas('applications', function($query) use ($barangay) {
-                            $query->where('barangay', $barangay)->where('status', 'Approved');
-                        })->whereNotNull('pwd_id')->count(),
-                        'benefits' => \App\Models\BenefitClaim::whereHas('pwdMember.applications', function($query) use ($barangay) {
-                            $query->where('barangay', $barangay)->where('status', 'Approved');
-                        })->count(),
-                        'complaints' => \App\Models\Complaint::whereHas('pwdMember.applications', function($query) use ($barangay) {
-                            $query->where('barangay', $barangay)->where('status', 'Approved');
-                        })->count(),
-                    ];
-                });
+                ->pluck('barangay')
+                ->unique();
+            
+            // Get from PWD members
+            $pwdMemberBarangays = \App\Models\PWDMember::select('barangay')
+                ->distinct()
+                ->whereNotNull('barangay')
+                ->get()
+                ->pluck('barangay')
+                ->unique();
+            
+            // Get from barangay presidents
+            $presidentBarangays = \App\Models\BarangayPresident::select('barangay')
+                ->distinct()
+                ->whereNotNull('barangay')
+                ->get()
+                ->pluck('barangay')
+                ->unique();
+            
+            // Combine all barangays that have data
+            $barangaysWithData = $applicationBarangays
+                ->merge($pwdMemberBarangays)
+                ->merge($presidentBarangays)
+                ->unique()
+                ->values();
+            
+            // Ensure all predefined barangays are included
+            $allBarangaysList = collect($allBarangays)
+                ->merge($barangaysWithData)
+                ->unique()
+                ->sort()
+                ->values();
+            
+            // Generate performance data for all barangays
+            $barangays = $allBarangaysList->map(function($barangay) {
+                return [
+                    'barangay' => $barangay,
+                    'registered' => \App\Models\PWDMember::whereHas('applications', function($query) use ($barangay) {
+                        $query->where('barangay', $barangay)->where('status', 'Approved');
+                    })->count(),
+                    'cards' => \App\Models\PWDMember::whereHas('applications', function($query) use ($barangay) {
+                        $query->where('barangay', $barangay)->where('status', 'Approved');
+                    })->whereNotNull('pwd_id')->count(),
+                    'benefits' => \App\Models\BenefitClaim::whereHas('pwdMember.applications', function($query) use ($barangay) {
+                        $query->where('barangay', $barangay)->where('status', 'Approved');
+                    })->count(),
+                    'complaints' => \App\Models\Complaint::whereHas('pwdMember.applications', function($query) use ($barangay) {
+                        $query->where('barangay', $barangay)->where('status', 'Approved');
+                    })->count(),
+                ];
+            });
 
             return response()->json(['barangays' => $barangays]);
         } catch (\Exception $e) {

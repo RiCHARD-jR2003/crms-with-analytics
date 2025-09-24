@@ -1014,6 +1014,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('reports/monthly-activity/{barangay}', [ReportController::class, 'getMonthlyActivitySummary']);
     Route::get('reports/city-wide-stats', [ReportController::class, 'getCityWideStats']);
     Route::get('reports/barangay-performance', [ReportController::class, 'getBarangayPerformance']);
+    Route::get('reports/all-barangays', [ReportController::class, 'getAllBarangays']);
     Route::get('reports/{id}/download', [ReportController::class, 'downloadReport']);
     
     // Audit Log routes

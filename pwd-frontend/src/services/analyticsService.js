@@ -45,6 +45,18 @@ const analyticsService = {
     }
   },
 
+  // Get all barangays (including those with no data)
+  getAllBarangays: async () => {
+    try {
+      const response = await api.get('/reports/all-barangays');
+      return response.data.barangays || [];
+    } catch (error) {
+      console.error('Error fetching all barangays:', error);
+      // Return default barangays if API fails
+      return ['Bigaa', 'Butong', 'Marinig', 'Gulod', 'Baclaran', 'San Isidro'];
+    }
+  },
+
   // Get transaction analysis data
   getTransactionAnalysis: async (params = {}) => {
     try {

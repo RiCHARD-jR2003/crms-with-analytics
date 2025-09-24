@@ -275,11 +275,19 @@ const Reports = () => {
         });
       }
       
-      // Barangay distribution
+      // Barangay distribution - include all barangays
       const barangayCounts = {};
       filteredMembers.forEach(member => {
         const barangay = member.barangay || 'Unknown';
         barangayCounts[barangay] = (barangayCounts[barangay] || 0) + 1;
+      });
+      
+      // Get all barangays and ensure they're all included
+      const allBarangays = await analyticsService.getAllBarangays();
+      allBarangays.forEach(barangay => {
+        if (!barangayCounts[barangay]) {
+          barangayCounts[barangay] = 0;
+        }
       });
       
       const barangayDistribution = Object.entries(barangayCounts)
@@ -381,12 +389,20 @@ const Reports = () => {
         });
       }
       
-      // Barangay card distribution
+      // Barangay card distribution - include all barangays
       const barangayCardCounts = {};
       filteredMembers.forEach(member => {
         if (member.pwd_id) { // Only count members with cards
           const barangay = member.barangay || 'Unknown';
           barangayCardCounts[barangay] = (barangayCardCounts[barangay] || 0) + 1;
+        }
+      });
+      
+      // Get all barangays and ensure they're all included
+      const allBarangays = await analyticsService.getAllBarangays();
+      allBarangays.forEach(barangay => {
+        if (!barangayCardCounts[barangay]) {
+          barangayCardCounts[barangay] = 0;
         }
       });
       
@@ -483,7 +499,7 @@ const Reports = () => {
         .map(([type, count]) => ({ type, count }))
         .sort((a, b) => b.count - a.count);
       
-      // Barangay benefits distribution
+      // Barangay benefits distribution - include all barangays
       const barangayBenefitsCounts = {};
       benefits.forEach(benefit => {
         if (benefit.status === 'approved') {
@@ -496,6 +512,14 @@ const Reports = () => {
             // For other benefit types, use single barangay
             barangayBenefitsCounts[benefit.barangay] = (barangayBenefitsCounts[benefit.barangay] || 0) + 1;
           }
+        }
+      });
+      
+      // Get all barangays and ensure they're all included
+      const allBarangays = await analyticsService.getAllBarangays();
+      allBarangays.forEach(barangay => {
+        if (!barangayBenefitsCounts[barangay]) {
+          barangayBenefitsCounts[barangay] = 0;
         }
       });
       
@@ -578,11 +602,19 @@ const Reports = () => {
         .map(([type, count]) => ({ type, count }))
         .sort((a, b) => b.count - a.count);
       
-      // Barangay complaints distribution
+      // Barangay complaints distribution - include all barangays
       const barangayComplaintsCounts = {};
       complaints.forEach(complaint => {
         const barangay = complaint.barangay || complaint.location || 'Unknown';
         barangayComplaintsCounts[barangay] = (barangayComplaintsCounts[barangay] || 0) + 1;
+      });
+      
+      // Get all barangays and ensure they're all included
+      const allBarangays = await analyticsService.getAllBarangays();
+      allBarangays.forEach(barangay => {
+        if (!barangayComplaintsCounts[barangay]) {
+          barangayComplaintsCounts[barangay] = 0;
+        }
       });
       
       const barangayComplaintsDistribution = Object.entries(barangayComplaintsCounts)
@@ -1068,9 +1100,9 @@ const Reports = () => {
         });
       }
       
-      // Fetch barangay performance from API
+      // Fetch barangay performance from API (now includes all barangays)
       try {
-        const barangayPerformanceResponse = await fetch('http://192.168.18.25:8000/api/barangay-performance');
+        const barangayPerformanceResponse = await fetch('http://192.168.18.25:8000/api/reports/barangay-performance');
         if (barangayPerformanceResponse.ok) {
           const barangayData = await barangayPerformanceResponse.json();
           setBarangayPerformance(barangayData.barangays || []);
