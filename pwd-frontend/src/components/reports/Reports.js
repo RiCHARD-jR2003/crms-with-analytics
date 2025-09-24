@@ -3506,6 +3506,7 @@ const Reports = () => {
     setPdfBlob(null);
   };
 
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F8F9FA' }}>
       <AdminSidebar />
@@ -3519,7 +3520,10 @@ const Reports = () => {
         p: 3
       }}>
 
+
         <Paper sx={{ ...cardStyles, bgcolor: 'white', p: { xs: 2, md: 5 }, m: { xs: 1, md: 2 } }}>
+          
+          
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 3, md: 5 }, p: 2 }}>
             <Typography variant="h4" component="h1" sx={{ 
               fontWeight: 700, 

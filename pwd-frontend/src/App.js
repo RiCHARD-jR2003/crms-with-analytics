@@ -151,22 +151,22 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      <Route 
-        path="/reports" 
-        element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <Reports />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
-        path="/ayuda" 
-        element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <Ayuda />
-          </ProtectedRoute>
-        }
-      />
+            <Route 
+              path="/reports" 
+              element={
+                <ProtectedRoute allowedRoles={["Admin"]}>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/ayuda" 
+              element={
+                <ProtectedRoute allowedRoles={["Admin"]}>
+                  <Ayuda />
+                </ProtectedRoute>
+              }
+            />
       <Route 
         path="/benefit-tracking" 
         element={

@@ -28,6 +28,7 @@ import {
   DialogActions,
   Avatar,
   Card,
+  Container,
   CardContent
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';

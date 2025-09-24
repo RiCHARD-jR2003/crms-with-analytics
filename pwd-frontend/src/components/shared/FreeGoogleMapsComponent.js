@@ -11,16 +11,40 @@ const PWD_OFFICE_LOCATION = {
 };
 
 // Barangay information with coordinates
-
+const BARANGAYS = [
+  { name: 'Banlic', lat: 14.2488, lng: 121.1248, color: '#FF6B35' },
+  { name: 'Bigaa', lat: 14.2588, lng: 121.1348, color: '#4CAF50' },
+  { name: 'Butong', lat: 14.2388, lng: 121.1148, color: '#2196F3' },
+  { name: 'Cabuyao', lat: 14.2488, lng: 121.1248, color: '#9C27B0' },
+  { name: 'Casile', lat: 14.2688, lng: 121.1448, color: '#FF9800' },
+  { name: 'Diezmo', lat: 14.2288, lng: 121.1048, color: '#F44336' },
+  { name: 'Gulod', lat: 14.2788, lng: 121.1548, color: '#00BCD4' },
+  { name: 'Mamatid', lat: 14.2188, lng: 121.0948, color: '#8BC34A' },
+  { name: 'Marinig', lat: 14.2888, lng: 121.1648, color: '#E91E63' },
+  { name: 'Niugan', lat: 14.2088, lng: 121.0848, color: '#3F51B5' },
+  { name: 'Pittland', lat: 14.2988, lng: 121.1748, color: '#FFC107' },
+  { name: 'Pulo', lat: 14.1988, lng: 121.0748, color: '#795548' },
+  { name: 'Sala', lat: 14.3088, lng: 121.1848, color: '#607D8B' },
+  { name: 'San Isidro', lat: 14.1888, lng: 121.0648, color: '#009688' },
+  { name: 'Poblacion Uno', lat: 14.2488, lng: 121.1248, color: '#673AB7' },
+  { name: 'Poblacion Dos', lat: 14.2488, lng: 121.1248, color: '#FF5722' },
+  { name: 'Poblacion Tres', lat: 14.2488, lng: 121.1248, color: '#CDDC39' },
+  { name: 'Poblacion Cuatro', lat: 14.2488, lng: 121.1248, color: '#FFEB3B' },
+  { name: 'Poblacion Cinco', lat: 14.2488, lng: 121.1248, color: '#00E676' }
+];
 
 const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
   const [selectedBarangay, setSelectedBarangay] = useState(null);
   const [mapType, setMapType] = useState('google'); // 'google' or 'openstreet'
 
   const handleBarangayClick = (barangay) => {
+    console.log('🗺️ Barangay clicked:', barangay.name);
     setSelectedBarangay(barangay);
     if (onBarangaySelect) {
+      console.log('🗺️ Calling onBarangaySelect with:', barangay);
       onBarangaySelect(barangay);
+    } else {
+      console.log('🗺️ No onBarangaySelect callback provided');
     }
   };
 
@@ -197,32 +221,41 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
             overflow: 'auto'
           }}
         >
-          {BARANGAYS.map((barangay, index) => (
-            <Button
-              key={index}
-              onClick={() => handleBarangayClick(barangay)}
-              onDoubleClick={() => openBarangayInMaps(barangay)}
-              sx={{
-                backgroundColor: selectedBarangay?.name === barangay.name ? barangay.color : '#fff',
-                color: selectedBarangay?.name === barangay.name ? '#fff' : barangay.color,
-                border: `1px solid ${barangay.color}`,
-                borderRadius: 1,
-                minHeight: { xs: '28px', sm: '30px', md: '32px' },
-                fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
-                fontWeight: 'bold',
-                textTransform: 'none',
-                padding: { xs: '4px 6px', sm: '6px 8px', md: '8px 12px' },
-                '&:hover': {
-                  backgroundColor: barangay.color,
-                  color: '#fff',
-                  transform: 'scale(1.02)'
-                },
-                transition: 'all 0.2s ease-in-out'
-              }}
-            >
-              {barangay.name}
-            </Button>
-          ))}
+          {BARANGAYS.map((barangay, index) => {
+            const isSelected = selectedBarangay?.name === barangay.name;
+            return (
+              <Button
+                key={index}
+                onClick={() => handleBarangayClick(barangay)}
+                onDoubleClick={() => openBarangayInMaps(barangay)}
+                sx={{
+                  backgroundColor: isSelected ? barangay.color : '#fff',
+                  color: isSelected ? '#fff' : barangay.color,
+                  border: `2px solid ${barangay.color}`,
+                  borderRadius: 1,
+                  minHeight: { xs: '28px', sm: '30px', md: '32px' },
+                  fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  padding: { xs: '4px 6px', sm: '6px 8px', md: '8px 12px' },
+                  boxShadow: isSelected ? `0 2px 8px ${barangay.color}40` : 'none',
+                  '&:hover': {
+                    backgroundColor: barangay.color,
+                    color: '#fff',
+                    transform: 'scale(1.05)',
+                    boxShadow: `0 4px 12px ${barangay.color}60`
+                  },
+                  '&:active': {
+                    transform: 'scale(0.98)'
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                  cursor: 'pointer'
+                }}
+              >
+                {barangay.name}
+              </Button>
+            );
+          })}
         </Box>
         
         <Typography variant="caption" sx={{ 
@@ -232,8 +265,22 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
           color: '#666',
           fontSize: { xs: '0.6rem', sm: '0.7rem' }
         }}>
-          Double-click barangay to open in Google Maps
+          Click to select • Double-click to open in Google Maps
         </Typography>
+        
+        {/* Debug info */}
+        {selectedBarangay && (
+          <Typography variant="caption" sx={{ 
+            display: 'block', 
+            textAlign: 'center', 
+            mt: 0.5, 
+            color: '#4CAF50',
+            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+            fontWeight: 'bold'
+          }}>
+            ✓ Selected: {selectedBarangay.name}
+          </Typography>
+        )}
       </Box>
 
       {/* Selected Barangay Info */}

@@ -106,8 +106,9 @@ function AdminDashboard() {
   };
 
   const handleBarangaySelect = (barangay) => {
+    console.log('🏛️ AdminDashboard received barangay selection:', barangay);
     setSelectedBarangay(barangay);
-    console.log('Selected barangay:', barangay.name);
+    console.log('🏛️ Selected barangay set to:', barangay.name);
   };
 
   const getActivityIcon = (iconType) => {
