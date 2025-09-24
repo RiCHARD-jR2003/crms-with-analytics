@@ -62,6 +62,13 @@ import {
 import AdminSidebar from '../shared/AdminSidebar';
 import SuggestionsSection from './SuggestionsSection';
 import analyticsService from '../../services/analyticsService';
+import {
+  BarangayPerformanceChart,
+  DisabilityTypeChart,
+  AgeGroupChart,
+  MonthlyTrendChart,
+  ServiceUtilizationChart
+} from '../charts';
 import { reportsService } from '../../services/reportsService';
 import pwdMemberService from '../../services/pwdMemberService';
 import { applicationService } from '../../services/applicationService';
@@ -1427,6 +1434,25 @@ const Reports = () => {
     
     return (
       <Box>
+        {/* Data Visualizations */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <BarangayPerformanceChart data={barangayPerformance} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <DisabilityTypeChart data={disabilityTypeDistribution} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <AgeGroupChart data={ageGroupDistribution} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <ServiceUtilizationChart data={pwdRegistrationData} />
+          </Grid>
+          <Grid item xs={12}>
+            <MonthlyTrendChart data={monthlyTrends} />
+          </Grid>
+        </Grid>
+
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
@@ -2428,6 +2454,19 @@ const Reports = () => {
     
     return (
       <Box>
+        {/* Data Visualizations */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12}>
+            <BarangayPerformanceChart data={barangayPerformance} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <ServiceUtilizationChart data={barangayPerformanceData} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <MonthlyTrendChart data={monthlyPerformanceTrends} />
+          </Grid>
+        </Grid>
+
         {/* Summary Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
