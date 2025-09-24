@@ -16,6 +16,7 @@ use App\Http\Controllers\API\DashboardController;
 use App\Http\Controllers\API\GmailController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\DashboardController as MainDashboardController;
+use App\Http\Controllers\API\AnalyticsController;
 
 // Language routes
 Route::prefix('language')->group(function () {
@@ -24,13 +25,15 @@ Route::prefix('language')->group(function () {
     Route::get('/supported', [LanguageController::class, 'getSupportedLanguages']);
 });
 
-// Google Translate routes
+// Google Translate routes (commented out - controller needs to be created)
+/*
 Route::prefix('translate')->group(function () {
     Route::post('/', [TranslateController::class, 'translate']);
     Route::post('/batch', [TranslateController::class, 'translateBatch']);
     Route::post('/detect', [TranslateController::class, 'detectLanguage']);
     Route::post('/section', [TranslateController::class, 'translateSection']);
 });
+*/
 
 // Public Dashboard routes (working)
 Route::get('/dashboard-stats', [MainDashboardController::class, 'getDashboardStats']);
@@ -1034,6 +1037,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('gmail/callback', [GmailController::class, 'handleCallback']);
     Route::get('gmail/test', [GmailController::class, 'testConnection']);
     Route::get('gmail/status', [GmailController::class, 'getStatus']);
+    
+    // Analytics routes with automated suggestions
+    Route::prefix('analytics')->group(function () {
+        Route::get('suggestions', [AnalyticsController::class, 'getAutomatedSuggestions']);
+        Route::get('suggestions/category/{category}', [AnalyticsController::class, 'getCategorySuggestions']);
+        Route::get('suggestions/summary', [AnalyticsController::class, 'getSuggestionSummary']);
+        Route::get('suggestions/high-priority', [AnalyticsController::class, 'getHighPrioritySuggestions']);
+        Route::get('transaction-analysis', [AnalyticsController::class, 'getTransactionAnalysis']);
+    });
 });
 
 // Simple test route

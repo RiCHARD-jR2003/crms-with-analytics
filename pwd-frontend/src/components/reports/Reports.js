@@ -54,6 +54,7 @@ import {
   Menu as MenuIcon
 } from '@mui/icons-material';
 import AdminSidebar from '../shared/AdminSidebar';
+import SuggestionsSection from './SuggestionsSection';
 import { reportsService } from '../../services/reportsService';
 import pwdMemberService from '../../services/pwdMemberService';
 import { applicationService } from '../../services/applicationService';
@@ -1062,6 +1063,16 @@ const Reports = () => {
   };
 
   const reports = [
+    {
+      id: 0,
+      title: 'Automated Suggestions Report',
+      description: 'AI-powered recommendations based on system analysis',
+      icon: <Lightbulb />,
+      color: '#9B59B6',
+      lastUpdated: new Date().toISOString().split('T')[0],
+      status: 'Available',
+      reportType: 'suggestions'
+    },
     {
       id: 1,
       title: 'PWD Registration Report',
@@ -2788,6 +2799,19 @@ const Reports = () => {
       
       // Generate content based on report type
       switch (reportType) {
+        case 'suggestions':
+          // For suggestions, we'll generate a simplified PDF
+          doc.setFontSize(16);
+          doc.setTextColor(75, 0, 130);
+          doc.text('Automated Suggestions Report', pageWidth / 2, yPosition, { align: 'center' });
+          yPosition += 20;
+          
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          doc.text('This report contains AI-powered recommendations based on system analysis.', 20, yPosition);
+          yPosition += 10;
+          doc.text('Please view the interactive version for full details and recommendations.', 20, yPosition);
+          break;
         case 'registration':
           await generatePWDRegistrationPDF(doc, yPosition, pageWidth);
           break;
@@ -3801,7 +3825,13 @@ const Reports = () => {
                 <Typography variant="body1" sx={{ mb: 3 }}>
                   {selectedReportData.description}
                 </Typography>
-                {selectedReportData.reportType === 'registration' ? (
+                {selectedReportData.reportType === 'suggestions' ? (
+                  <SuggestionsSection 
+                    dateRange={getDateRange(selectedDateRange)}
+                    selectedBarangay="all"
+                    onRefresh={() => {}}
+                  />
+                ) : selectedReportData.reportType === 'registration' ? (
                   renderPWDRegistrationReport()
                 ) : selectedReportData.reportType === 'cards' ? (
                   renderCardDistributionReport()
