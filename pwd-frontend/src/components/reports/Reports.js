@@ -1115,51 +1115,51 @@ const Reports = () => {
           setBarangayPerformance(barangayData.barangays || []);
         } else {
           console.error('Barangay Performance API Error:', barangayPerformanceResponse.status);
-          // Use fallback data when API fails - All 18 barangays with sample data
+          // Use fallback data when API fails - All 18 barangays with zeros
           const fallbackData = [
-            { barangay: 'Baclaran', registered: 45, cards: 42, benefits: 38, complaints: 2 },
+            { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Banaybanay', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Bigaa', registered: 78, cards: 75, benefits: 68, complaints: 1 },
-            { barangay: 'Butong', registered: 32, cards: 30, benefits: 28, complaints: 0 },
+            { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Casile', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Gulod', registered: 56, cards: 54, benefits: 48, complaints: 3 },
+            { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Marinig', registered: 89, cards: 85, benefits: 76, complaints: 4 },
+            { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pob. Dos', registered: 23, cards: 22, benefits: 20, complaints: 1 },
+            { barangay: 'Pob. Dos', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Pob. Uno', registered: 67, cards: 64, benefits: 58, complaints: 2 },
+            { barangay: 'Pob. Uno', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'Sala', registered: 41, cards: 39, benefits: 35, complaints: 1 },
-            { barangay: 'San Isidro', registered: 34, cards: 32, benefits: 29, complaints: 0 }
+            { barangay: 'Sala', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 }
           ];
           setBarangayPerformance(fallbackData);
         }
       } catch (error) {
         console.error('Error fetching barangay performance:', error);
-        // Use fallback data when API fails - All 18 barangays with sample data
+        // Use fallback data when API fails - All 18 barangays with zeros
         const fallbackData = [
-          { barangay: 'Baclaran', registered: 45, cards: 42, benefits: 38, complaints: 2 },
+          { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Banaybanay', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Bigaa', registered: 78, cards: 75, benefits: 68, complaints: 1 },
-          { barangay: 'Butong', registered: 32, cards: 30, benefits: 28, complaints: 0 },
+          { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Casile', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Gulod', registered: 56, cards: 54, benefits: 48, complaints: 3 },
+          { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Marinig', registered: 89, cards: 85, benefits: 76, complaints: 4 },
+          { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pob. Dos', registered: 23, cards: 22, benefits: 20, complaints: 1 },
+          { barangay: 'Pob. Dos', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Pob. Uno', registered: 67, cards: 64, benefits: 58, complaints: 2 },
+          { barangay: 'Pob. Uno', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'Sala', registered: 41, cards: 39, benefits: 35, complaints: 1 },
-          { barangay: 'San Isidro', registered: 34, cards: 32, benefits: 29, complaints: 0 }
+          { barangay: 'Sala', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 }
         ];
         setBarangayPerformance(fallbackData);
       }
