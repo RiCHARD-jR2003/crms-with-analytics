@@ -803,6 +803,12 @@ const Reports = () => {
         performanceScore: overallPerformanceScore
       });
       
+      console.log('Barangay Performance Data Set:', {
+        totalBarangays: barangays.length,
+        barangayRankings,
+        topPerformers: topPerformingBarangays
+      });
+      
     } catch (error) {
       console.error('Error fetching barangay performance data:', error);
     }
@@ -1105,7 +1111,11 @@ const Reports = () => {
         const barangayPerformanceResponse = await fetch('http://192.168.18.25:8000/api/reports/barangay-performance');
         if (barangayPerformanceResponse.ok) {
           const barangayData = await barangayPerformanceResponse.json();
+          console.log('Barangay Performance API Response:', barangayData);
           setBarangayPerformance(barangayData.barangays || []);
+        } else {
+          console.error('Barangay Performance API Error:', barangayPerformanceResponse.status);
+          setBarangayPerformance([]);
         }
       } catch (error) {
         console.error('Error fetching barangay performance:', error);
@@ -3943,8 +3953,16 @@ const Reports = () => {
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
+                  ) : (barangayPerformance.length === 0 && barangayPerformanceData.barangayRankings.length === 0) ? (
+                    <TableRow>
+                      <TableCell colSpan={6} sx={{ textAlign: 'center', p: 4, color: '#7F8C8D' }}>
+                        <Typography variant="body1">
+                          No barangay data available. Please check your connection and try again.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
                   ) : (
-                    barangayPerformance.map((row, index) => (
+                    (barangayPerformance.length > 0 ? barangayPerformance : barangayPerformanceData.barangayRankings).map((row, index) => (
                       <TableRow key={row.barangay} sx={{ bgcolor: 'white' }}>
                         <TableCell sx={{ fontWeight: 500, color: '#2C3E50', py: 2, px: 3 }}>{row.barangay}</TableCell>
                         <TableCell sx={{ color: '#2C3E50', fontWeight: 500, py: 2, px: 3 }}>{row.registered}</TableCell>
