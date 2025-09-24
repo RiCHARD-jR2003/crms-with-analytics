@@ -1015,6 +1015,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('reports/city-wide-stats', [ReportController::class, 'getCityWideStats']);
     Route::get('reports/barangay-performance', [ReportController::class, 'getBarangayPerformance']);
     Route::get('reports/all-barangays', [ReportController::class, 'getAllBarangays']);
+
+// Debug route for testing barangay performance
+Route::get('debug/barangay-performance', function() {
+    try {
+        $pwdCount = \App\Models\PWDMember::count();
+        $appCount = \App\Models\Application::count();
+        
+        return response()->json([
+            'pwd_members_total' => $pwdCount,
+            'applications_total' => $appCount,
+            'status' => 'success'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
     Route::get('reports/{id}/download', [ReportController::class, 'downloadReport']);
     
     // Audit Log routes
