@@ -678,7 +678,7 @@ const Reports = () => {
       const complaintsResponse = await fetch('http://192.168.18.25:8000/api/complaints');
       const complaints = complaintsResponse.ok ? await complaintsResponse.json() : [];
       
-      // Define barangays list
+      // Define barangays list - All 18 barangays
       const barangays = [
         'Bigaa', 'Butong', 'Marinig', 'Gulod', 'Pob. Uno', 'Pob. Dos', 'Pob. Tres',
         'Sala', 'Niugan', 'Banaybanay', 'Pulo', 'Diezmo', 'Pittland', 'San Isidro',
@@ -1115,27 +1115,51 @@ const Reports = () => {
           setBarangayPerformance(barangayData.barangays || []);
         } else {
           console.error('Barangay Performance API Error:', barangayPerformanceResponse.status);
-          // Use fallback data when API fails
+          // Use fallback data when API fails - All 18 barangays
           const fallbackData = [
             { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pob. Uno', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pob. Dos', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Sala', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Banaybanay', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
             { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-            { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 }
+            { barangay: 'Casile', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 }
           ];
           setBarangayPerformance(fallbackData);
         }
       } catch (error) {
         console.error('Error fetching barangay performance:', error);
-        // Use fallback data when API fails
+        // Use fallback data when API fails - All 18 barangays
         const fallbackData = [
           { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pob. Uno', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pob. Dos', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pob. Tres', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Sala', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Niugan', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Banaybanay', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pulo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Diezmo', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Pittland', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Mamatid', registered: 0, cards: 0, benefits: 0, complaints: 0 },
           { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
-          { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 }
+          { barangay: 'Casile', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Banlic', registered: 0, cards: 0, benefits: 0, complaints: 0 }
         ];
         setBarangayPerformance(fallbackData);
       }

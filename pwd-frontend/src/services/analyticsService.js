@@ -53,7 +53,11 @@ const analyticsService = {
     } catch (error) {
       console.error('Error fetching all barangays:', error);
       // Return default barangays if API fails
-      return ['Bigaa', 'Butong', 'Marinig', 'Gulod', 'Baclaran', 'San Isidro'];
+      return [
+        'Bigaa', 'Butong', 'Marinig', 'Gulod', 'Pob. Uno', 'Pob. Dos', 
+        'Pob. Tres', 'Sala', 'Niugan', 'Banaybanay', 'Pulo', 'Diezmo', 
+        'Pittland', 'San Isidro', 'Mamatid', 'Baclaran', 'Casile', 'Banlic'
+      ];
     }
   },
 

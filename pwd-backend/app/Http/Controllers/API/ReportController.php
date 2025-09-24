@@ -283,8 +283,20 @@ class ReportController extends Controller
                 'Butong', 
                 'Marinig',
                 'Gulod',
+                'Pob. Uno',
+                'Pob. Dos',
+                'Pob. Tres',
+                'Sala',
+                'Niugan',
+                'Banaybanay',
+                'Pulo',
+                'Diezmo',
+                'Pittland',
+                'San Isidro',
+                'Mamatid',
                 'Baclaran',
-                'San Isidro'
+                'Casile',
+                'Banlic'
             ];
             
             // Get barangays that have data (from applications, PWD members, etc.)
@@ -347,8 +359,20 @@ class ReportController extends Controller
                 'Butong', 
                 'Marinig',
                 'Gulod',
+                'Pob. Uno',
+                'Pob. Dos',
+                'Pob. Tres',
+                'Sala',
+                'Niugan',
+                'Banaybanay',
+                'Pulo',
+                'Diezmo',
+                'Pittland',
+                'San Isidro',
+                'Mamatid',
                 'Baclaran',
-                'San Isidro'
+                'Casile',
+                'Banlic'
             ];
             
             // Get barangays that have data (from applications, PWD members, etc.)
