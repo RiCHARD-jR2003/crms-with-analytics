@@ -58,11 +58,25 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
     window.open(url, '_blank');
   };
 
+  // Dynamic map URLs based on selected barangay
+  const getMapCenter = () => {
+    if (selectedBarangay) {
+      return {
+        lat: selectedBarangay.lat,
+        lng: selectedBarangay.lng,
+        name: selectedBarangay.name
+      };
+    }
+    return PWD_OFFICE_LOCATION;
+  };
+
+  const mapCenter = getMapCenter();
+  
   // Google Maps Embed URL (no API key required - using public embed)
-  const googleMapsEmbedUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12345!2d121.123456!3d14.123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDA3JzI0LjQiTiAxMjHCsDA3JzI0LjQiRQ!5e0!3m2!1sen!2sph!4v1234567890123!5m2!1sen!2sph`;
+  const googleMapsEmbedUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12345!2d${mapCenter.lng}!3d${mapCenter.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDA3JzI0LjQiTiAxMjHCsDA3JzI0LjQiRQ!5e0!3m2!1sen!2sph!4v1234567890123!5m2!1sen!2sph`;
 
   // OpenStreetMap URL
-  const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${PWD_OFFICE_LOCATION.lng - 0.01},${PWD_OFFICE_LOCATION.lat - 0.01},${PWD_OFFICE_LOCATION.lng + 0.01},${PWD_OFFICE_LOCATION.lat + 0.01}&layer=mapnik&marker=${PWD_OFFICE_LOCATION.lat},${PWD_OFFICE_LOCATION.lng}`;
+  const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${mapCenter.lng - 0.01},${mapCenter.lat - 0.01},${mapCenter.lng + 0.01},${mapCenter.lat + 0.01}&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`;
 
   return (
     <Box sx={{ width: '100%', height: height, overflow: 'auto' }}>
@@ -117,7 +131,7 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
               title="Google Maps - PWD Office Location"
             />
             
-            {/* Overlay with PWD Office Info */}
+            {/* Overlay with Selected Location Info */}
             <Box
               sx={{
                 position: 'absolute',
@@ -134,11 +148,11 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <LocationOn sx={{ color: '#FF6B35', fontSize: { xs: 16, sm: 20 } }} />
                 <Typography variant="subtitle2" sx={{ color: '#FF6B35', fontWeight: 'bold', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-                  PWD Office
+                  {selectedBarangay ? selectedBarangay.name : 'PWD Office'}
                 </Typography>
               </Box>
               <Typography variant="body2" sx={{ color: '#333', fontSize: { xs: '0.7rem', sm: '0.8rem' }, lineHeight: 1.2 }}>
-                {PWD_OFFICE_LOCATION.name}
+                {selectedBarangay ? `${selectedBarangay.name}, Cabuyao City, Laguna` : PWD_OFFICE_LOCATION.name}
               </Typography>
             </Box>
           </Box>
@@ -153,7 +167,7 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
               title="OpenStreetMap - PWD Office Location"
             />
             
-            {/* Overlay with PWD Office Info */}
+            {/* Overlay with Selected Location Info */}
             <Box
               sx={{
                 position: 'absolute',
@@ -170,11 +184,11 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <LocationOn sx={{ color: '#FF6B35', fontSize: { xs: 16, sm: 20 } }} />
                 <Typography variant="subtitle2" sx={{ color: '#FF6B35', fontWeight: 'bold', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-                  PWD Office
+                  {selectedBarangay ? selectedBarangay.name : 'PWD Office'}
                 </Typography>
               </Box>
               <Typography variant="body2" sx={{ color: '#333', fontSize: { xs: '0.7rem', sm: '0.8rem' }, lineHeight: 1.2 }}>
-                {PWD_OFFICE_LOCATION.name}
+                {selectedBarangay ? `${selectedBarangay.name}, Cabuyao City, Laguna` : PWD_OFFICE_LOCATION.name}
               </Typography>
             </Box>
           </Box>
