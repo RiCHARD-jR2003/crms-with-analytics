@@ -967,18 +967,20 @@ Route::get('reports/barangay-performance', function() {
         // Generate performance data for all barangays
         $barangays = collect($allBarangays)->map(function($barangay) {
             try {
-                // Count approved applications for this barangay
-                $approvedApplications = \App\Models\Application::where('barangay', $barangay)
-                    ->where('status', 'Approved')
-                    ->count();
+                // Count PWD members by barangay from applications
+                $registeredPWDs = \App\Models\PWDMember::whereHas('applications', function($query) use ($barangay) {
+                    $query->where('barangay', $barangay)->where('status', 'Approved');
+                })->count();
                 
-                // Count total applications for this barangay
-                $totalApplications = \App\Models\Application::where('barangay', $barangay)->count();
+                // Count PWD members with PWD IDs (cards issued)
+                $cardsIssued = \App\Models\PWDMember::whereHas('applications', function($query) use ($barangay) {
+                    $query->where('barangay', $barangay)->where('status', 'Approved');
+                })->whereNotNull('pwd_id')->count();
                 
                 return [
                     'barangay' => $barangay,
-                    'registered' => $approvedApplications,
-                    'cards' => $approvedApplications, // Assuming approved = cards issued
+                    'registered' => $registeredPWDs,
+                    'cards' => $cardsIssued,
                     'benefits' => 0, // No benefit claims yet
                     'complaints' => 0, // No complaints yet
                 ];
