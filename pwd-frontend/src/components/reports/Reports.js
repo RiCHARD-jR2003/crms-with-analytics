@@ -2486,7 +2486,7 @@ const Reports = () => {
                   Total Registrations
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  +{yearOverYearGrowth.registrations}% vs {year-1}
+                  +{yearOverYearGrowth.registrations || 0}% vs {year-1}
                 </Typography>
               </CardContent>
             </Card>
@@ -2508,7 +2508,7 @@ const Reports = () => {
                   Cards Issued
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  +{yearOverYearGrowth.cardsIssued}% vs {year-1}
+                  +{yearOverYearGrowth.cardsIssued || 0}% vs {year-1}
                 </Typography>
               </CardContent>
             </Card>
@@ -2530,7 +2530,7 @@ const Reports = () => {
                   Benefits Distributed
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  +{yearOverYearGrowth.benefitsDistributed}% vs {year-1}
+                  +{yearOverYearGrowth.benefitsDistributed || 0}% vs {year-1}
                 </Typography>
               </CardContent>
             </Card>
@@ -2552,7 +2552,7 @@ const Reports = () => {
                   Applications Processed
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  +{yearOverYearGrowth.applications}% vs {year-1}
+                  +{yearOverYearGrowth.applications || 0}% vs {year-1}
                 </Typography>
               </CardContent>
             </Card>
@@ -2574,7 +2574,7 @@ const Reports = () => {
                   Complaints Received
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  {yearOverYearGrowth.complaints}% vs {year-1}
+                  {yearOverYearGrowth.complaints || 0}% vs {year-1}
                 </Typography>
               </CardContent>
             </Card>
@@ -2667,7 +2667,7 @@ const Reports = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Box sx={{ textAlign: 'center', p: 2 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#3498DB', mb: 1 }}>
-                  {serviceEfficiency.registrationRate.toFixed(1)}
+                  {(serviceEfficiency.registrationRate || 0).toFixed(1)}
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
                   Avg. Registrations per Month
@@ -2677,7 +2677,7 @@ const Reports = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Box sx={{ textAlign: 'center', p: 2 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#27AE60', mb: 1 }}>
-                  {serviceEfficiency.cardIssuanceRate.toFixed(1)}%
+                  {(serviceEfficiency.cardIssuanceRate || 0).toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
                   Card Issuance Rate
@@ -2687,7 +2687,7 @@ const Reports = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Box sx={{ textAlign: 'center', p: 2 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#E74C3C', mb: 1 }}>
-                  {serviceEfficiency.benefitDistributionRate.toFixed(1)}%
+                  {(serviceEfficiency.benefitDistributionRate || 0).toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
                   Benefit Distribution Rate
@@ -2697,7 +2697,7 @@ const Reports = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Box sx={{ textAlign: 'center', p: 2 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#9B59B6', mb: 1 }}>
-                  {serviceEfficiency.complaintResolutionRate.toFixed(1)}%
+                  {(serviceEfficiency.complaintResolutionRate || 0).toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
                   Complaint Resolution Rate
