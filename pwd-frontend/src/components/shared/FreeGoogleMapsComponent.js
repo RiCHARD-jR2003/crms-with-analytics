@@ -65,7 +65,7 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
   const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${PWD_OFFICE_LOCATION.lng - 0.01},${PWD_OFFICE_LOCATION.lat - 0.01},${PWD_OFFICE_LOCATION.lng + 0.01},${PWD_OFFICE_LOCATION.lat + 0.01}&layer=mapnik&marker=${PWD_OFFICE_LOCATION.lat},${PWD_OFFICE_LOCATION.lng}`;
 
   return (
-    <Box sx={{ width: '100%', height: height }}>
+    <Box sx={{ width: '100%', height: height, overflow: 'auto' }}>
       {/* Map Type Selector */}
       <Box sx={{ 
         display: 'flex', 
@@ -96,7 +96,7 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
 
       {/* Map Container */}
       <Box sx={{ 
-        height: '70%', 
+        height: '400px', 
         mb: 2,
         borderRadius: 2,
         overflow: 'hidden',
@@ -207,7 +207,7 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
       </Box>
 
       {/* Barangay Selection Grid */}
-      <Box sx={{ height: '30%', p: { xs: 0.5, sm: 1 } }}>
+      <Box sx={{ p: { xs: 0.5, sm: 1 } }}>
         <Typography variant="subtitle2" sx={{ mb: 1, color: '#333', fontWeight: 'bold', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
           Select Barangay
         </Typography>
@@ -217,8 +217,7 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
             display: 'grid',
             gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(6, 1fr)' },
             gap: { xs: 0.3, sm: 0.4, md: 0.5 },
-            height: 'calc(100% - 30px)',
-            overflow: 'auto'
+            minHeight: '200px'
           }}
         >
           {BARANGAYS.map((barangay, index) => {
