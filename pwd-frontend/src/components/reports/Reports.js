@@ -1115,11 +1115,29 @@ const Reports = () => {
           setBarangayPerformance(barangayData.barangays || []);
         } else {
           console.error('Barangay Performance API Error:', barangayPerformanceResponse.status);
-          setBarangayPerformance([]);
+          // Use fallback data when API fails
+          const fallbackData = [
+            { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+            { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 }
+          ];
+          setBarangayPerformance(fallbackData);
         }
       } catch (error) {
         console.error('Error fetching barangay performance:', error);
-        setBarangayPerformance([]);
+        // Use fallback data when API fails
+        const fallbackData = [
+          { barangay: 'Bigaa', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Butong', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Marinig', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Gulod', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'Baclaran', registered: 0, cards: 0, benefits: 0, complaints: 0 },
+          { barangay: 'San Isidro', registered: 0, cards: 0, benefits: 0, complaints: 0 }
+        ];
+        setBarangayPerformance(fallbackData);
       }
       
     } catch (error) {
