@@ -1537,25 +1537,25 @@ const Reports = () => {
         </Grid>
 
         {/* Monthly Trends */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
             Monthly Registration Trends
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Month</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Registrations</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Percentage</TableCell>
+                <TableRow sx={{ bgcolor: '#34495E' }}>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Month</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Registrations</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Percentage</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {monthlyTrends.map((trend, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{trend.month}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>{trend.registrations}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>
+                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>{trend.month}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>{trend.registrations}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>
                       {totalRegistrations > 0 ? ((trend.registrations / totalRegistrations) * 100).toFixed(1) : 0}%
                     </TableCell>
                   </TableRow>
@@ -1566,25 +1566,25 @@ const Reports = () => {
         </Paper>
 
         {/* Barangay Distribution */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
             Registration by Barangay
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Barangay</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Registrations</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Percentage</TableCell>
+                <TableRow sx={{ bgcolor: '#34495E' }}>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Barangay</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Registrations</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Percentage</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {barangayDistribution.slice(0, 10).map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{item.barangay}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>{item.count}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>
+                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>{item.barangay}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>{item.count}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>
                       {totalRegistrations > 0 ? ((item.count / totalRegistrations) * 100).toFixed(1) : 0}%
                     </TableCell>
                   </TableRow>
@@ -1595,25 +1595,25 @@ const Reports = () => {
         </Paper>
 
         {/* Disability Type Distribution */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
             Disability Type Distribution
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Disability Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Count</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Percentage</TableCell>
+                <TableRow sx={{ bgcolor: '#34495E' }}>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Disability Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Count</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Percentage</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {disabilityTypeDistribution.map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{item.disability}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>{item.count}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>
+                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>{item.disability}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>{item.count}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>
                       {totalRegistrations > 0 ? ((item.count / totalRegistrations) * 100).toFixed(1) : 0}%
                     </TableCell>
                   </TableRow>
@@ -1624,33 +1624,33 @@ const Reports = () => {
         </Paper>
 
         {/* Recent Registrations */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
             Recent Registrations
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>PWD ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Barangay</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Disability Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Registration Date</TableCell>
+                <TableRow sx={{ bgcolor: '#34495E' }}>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>PWD ID</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Barangay</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Disability Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Registration Date</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {recentRegistrations.map((member, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>
+                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>
                       {member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned')}
                     </TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>
+                    <TableCell sx={{ color: 'white' }}>
                       {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided'}
                     </TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>{member.barangay || 'Not specified'}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>{member.disabilityType || 'Not specified'}</TableCell>
-                    <TableCell sx={{ color: '#2C3E50' }}>
+                    <TableCell sx={{ color: 'white' }}>{member.barangay || 'Not specified'}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>{member.disabilityType || 'Not specified'}</TableCell>
+                    <TableCell sx={{ color: 'white' }}>
                       {member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not available'}
                     </TableCell>
                   </TableRow>
