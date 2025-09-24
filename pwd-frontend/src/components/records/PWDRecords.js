@@ -650,6 +650,7 @@ function PWDRecords() {
                       placeholder="Search table" 
                       value={filters.search}
                       onChange={(e) => handleFilterChange('search', e.target.value)}
+                      autoFocus={false}
                       sx={{ 
                         width: { xs: '100%', sm: 250, md: 300 },
                         '& .MuiOutlinedInput-root': {
@@ -716,6 +717,7 @@ function PWDRecords() {
                             value={filters.barangay}
                             onChange={(e) => handleFilterChange('barangay', e.target.value)}
                             label="Barangay"
+                            autoFocus={false}
                             sx={{
                               bgcolor: '#FFFFFF',
                               minWidth: 200,
@@ -779,7 +781,7 @@ function PWDRecords() {
                           <Select
                             value={filters.disability}
                             onChange={(e) => handleFilterChange('disability', e.target.value)}
-                            label="Disability Type"
+                            autoFocus={false}
                             sx={{
                               bgcolor: '#FFFFFF',
                               minWidth: 200,
@@ -843,6 +845,7 @@ function PWDRecords() {
                           <Select
                             value={filters.ageRange}
                             onChange={(e) => handleFilterChange('ageRange', e.target.value)}
+                            autoFocus={false}
                             label="Age Range"
                             sx={{
                               bgcolor: '#FFFFFF',
@@ -907,6 +910,7 @@ function PWDRecords() {
                           <Select
                             value={filters.status}
                             onChange={(e) => handleFilterChange('status', e.target.value)}
+                            autoFocus={false}
                             label="Status"
                             sx={{
                               bgcolor: '#FFFFFF',

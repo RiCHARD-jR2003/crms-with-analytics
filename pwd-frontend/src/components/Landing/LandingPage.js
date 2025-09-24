@@ -1,5 +1,5 @@
 // src/components/Landing/LandingPage.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -29,9 +29,15 @@ function LandingPage() {
     navigate('/login');
   };
 
-  // If user is logged in as PWD Member, show dashboard directly
-  if (currentUser && currentUser.role === 'PWDMember') {
-    navigate('/dashboard');
+  // If user is logged in, redirect to dashboard
+  useEffect(() => {
+    if (currentUser && (currentUser.role === 'PWDMember' || currentUser.role === 'BarangayPresident' || currentUser.role === 'Admin')) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
+
+  // If user is logged in, don't render the landing page
+  if (currentUser && (currentUser.role === 'PWDMember' || currentUser.role === 'BarangayPresident' || currentUser.role === 'Admin')) {
     return null;
   }
 

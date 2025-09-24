@@ -26,7 +26,7 @@ return new class extends Migration
             $table->timestamp('closed_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('pwd_member_id')->references('id')->on('pwd_member')->onDelete('cascade');
+            $table->foreign('pwd_member_id')->references('id')->on('pwd_members')->onDelete('cascade');
             $table->index(['status', 'created_at']);
             $table->index('pwd_member_id');
         });

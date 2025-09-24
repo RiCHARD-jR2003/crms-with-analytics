@@ -99,7 +99,12 @@ function PWDMemberDashboard() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F8F9FA' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      minHeight: '100vh', 
+      bgcolor: '#F8F9FA',
+      fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif'
+    }}>
       <PWDMemberSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
       
       {/* Main content */}
@@ -168,16 +173,21 @@ function PWDMemberDashboard() {
         <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
           {/* Latest Announcements */}
           <Grid item xs={12} md={6}>
-            <Paper elevation={0} sx={{
+            <Paper elevation={2} sx={{
               p: 3,
               border: '1px solid #E0E0E0',
-              borderRadius: 4,
+              borderRadius: 3,
               bgcolor: '#FFFFFF',
-              height: '100%'
+              height: '100%',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'box-shadow 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
+              }
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
                 <Campaign sx={{ color: '#F39C12', fontSize: 24 }} />
-                <Typography sx={{ fontWeight: 700, color: '#2C3E50', fontSize: '1.2rem' }}>
+                <Typography sx={{ fontWeight: 700, color: '#000000', fontSize: '1.2rem' }}>
                   Latest Announcements
                 </Typography>
               </Box>
@@ -193,7 +203,7 @@ function PWDMemberDashboard() {
                         <ListItemText
                           primary={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 500, color: '#2C3E50' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 500, color: '#000000' }}>
                                 {announcement.title}
                               </Typography>
                               {/* Show barangay-specific badge */}
@@ -243,16 +253,21 @@ function PWDMemberDashboard() {
 
           {/* Support Desk */}
           <Grid item xs={12} md={6}>
-            <Paper elevation={0} sx={{
+            <Paper elevation={2} sx={{
               p: 3,
               border: '1px solid #E0E0E0',
-              borderRadius: 4,
+              borderRadius: 3,
               bgcolor: '#FFFFFF',
-              height: '100%'
+              height: '100%',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'box-shadow 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
+              }
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
                 <Support sx={{ color: '#E74C3C', fontSize: 24 }} />
-                <Typography sx={{ fontWeight: 700, color: '#2C3E50', fontSize: '1.2rem' }}>
+                <Typography sx={{ fontWeight: 700, color: '#000000', fontSize: '1.2rem' }}>
                   Support Desk
                 </Typography>
               </Box>
@@ -317,7 +332,17 @@ function PWDMemberDashboard() {
         {/* Summary Cards */}
         <Grid container spacing={3}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+              bgcolor: '#FFFFFF', 
+              border: '1px solid #E0E0E0',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                transform: 'translateY(-2px)'
+              }
+            }}>
               <CardContent sx={{ textAlign: 'center', p: 2 }}>
                 <CheckCircle sx={{ fontSize: 40, color: '#27AE60', mb: 1 }} />
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#27AE60' }}>
@@ -330,7 +355,17 @@ function PWDMemberDashboard() {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+              bgcolor: '#FFFFFF', 
+              border: '1px solid #E0E0E0',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                transform: 'translateY(-2px)'
+              }
+            }}>
               <CardContent sx={{ textAlign: 'center', p: 2 }}>
                 <Person sx={{ fontSize: 40, color: '#3498DB', mb: 1 }} />
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#3498DB' }}>
@@ -343,7 +378,17 @@ function PWDMemberDashboard() {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+              bgcolor: '#FFFFFF', 
+              border: '1px solid #E0E0E0',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                transform: 'translateY(-2px)'
+              }
+            }}>
               <CardContent sx={{ textAlign: 'center', p: 2 }}>
                 <Campaign sx={{ fontSize: 40, color: '#F39C12', mb: 1 }} />
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#F39C12' }}>
@@ -356,7 +401,17 @@ function PWDMemberDashboard() {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#FFFFFF', border: '1px solid #E0E0E0' }}>
+            <Card sx={{ 
+              borderRadius: 3, 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+              bgcolor: '#FFFFFF', 
+              border: '1px solid #E0E0E0',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                transform: 'translateY(-2px)'
+              }
+            }}>
               <CardContent sx={{ textAlign: 'center', p: 2 }}>
                 <Support sx={{ fontSize: 40, color: '#E74C3C', mb: 1 }} />
                 <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#E74C3C' }}>

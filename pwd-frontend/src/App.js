@@ -9,25 +9,20 @@ import LandingPage from './components/Landing/LandingPage';
 import Login from './components/auth/login';
 import Register from './components/auth/Register';
 import PasswordReset from './components/auth/PasswordReset';
+import PWDMemberDashboard from './components/dashboard/PWDMemberDashboard';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import BarangayPresidentDashboard from './components/dashboard/BarangayPresidentDashboard';
-// Temporarily commenting out components that might have React Native dependencies
-import BarangayPresidentPWDRecords from './components/records/BarangayPresidentPWDRecords';
-import BarangayPresidentPWDCard from './components/cards/BarangayPresidentPWDCard';
-import BarangayPresidentAyuda from './components/ayuda/BarangayPresidentAyuda';
-import BarangayPresidentAnnouncement from './components/announcement/BarangayPresidentAnnouncement';
-import PWDMemberDashboard from './components/dashboard/PWDMemberDashboard';
 import PWDProfile from './components/profile/PWDProfile';
 import PWDMemberSupportDesk from './components/support/PWDMemberSupportDesk';
+import AdminSupportDesk from './components/support/AdminSupportDesk';
 import PWDMemberAnnouncement from './components/announcement/PWDMemberAnnouncement';
 import PWDRecords from './components/records/PWDRecords';
-import PWDCard from './components/cards/PWDCard';
 import Reports from './components/reports/Reports';
-import Ayuda from './components/ayuda/Ayuda';
-import Announcement from './components/announcement/Announcement';
-import AdminSupportDesk from './components/support/AdminSupportDesk';
+import BarangayPresidentPWDRecords from './components/records/BarangayPresidentPWDRecords';
+import BarangayPresidentPWDCard from './components/cards/BarangayPresidentPWDCard';
 import BarangayPresidentReports from './components/reports/BarangayPresidentReports';
-import BenefitTracking from './components/benefit/BenefitTracking';
+import BarangayPresidentAyuda from './components/ayuda/BarangayPresidentAyuda';
+import BarangayPresidentAnnouncement from './components/announcement/BarangayPresidentAnnouncement';
 
 const theme = createTheme({
   palette: {
@@ -120,12 +115,13 @@ function AppContent() {
         path="/dashboard" 
         element={
           <ProtectedRoute>
+            {currentUser?.role === 'PWDMember' && <PWDMemberDashboard />}
             {currentUser?.role === 'Admin' && <AdminDashboard />}
             {currentUser?.role === 'BarangayPresident' && <BarangayPresidentDashboard />}
-            {currentUser?.role === 'PWDMember' && <PWDMemberDashboard />}
           </ProtectedRoute>
         } 
       />
+      {/* Admin Routes */}
       <Route 
         path="/admin-dashboard" 
         element={
@@ -134,7 +130,6 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      {/* Admin Routes */}
       <Route 
         path="/pwd-records" 
         element={
@@ -144,42 +139,10 @@ function AppContent() {
         }
       />
       <Route 
-        path="/pwd-card" 
+        path="/reports" 
         element={
           <ProtectedRoute allowedRoles={["Admin"]}>
-            <PWDCard />
-          </ProtectedRoute>
-        }
-      />
-            <Route 
-              path="/reports" 
-              element={
-                <ProtectedRoute allowedRoles={["Admin"]}>
-                  <Reports />
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/ayuda" 
-              element={
-                <ProtectedRoute allowedRoles={["Admin"]}>
-                  <Ayuda />
-                </ProtectedRoute>
-              }
-            />
-      <Route 
-        path="/benefit-tracking" 
-        element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <BenefitTracking />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
-        path="/announcement" 
-        element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <Announcement />
+            <Reports />
           </ProtectedRoute>
         }
       />
@@ -188,6 +151,39 @@ function AppContent() {
         element={
           <ProtectedRoute allowedRoles={["Admin"]}>
             <AdminSupportDesk />
+          </ProtectedRoute>
+        }
+      />
+      {/* PWD Member Routes */}
+      <Route 
+        path="/pwd-dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={["PWDMember"]}>
+            <PWDMemberDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route 
+        path="/pwd-announcements" 
+        element={
+          <ProtectedRoute allowedRoles={["PWDMember"]}>
+            <PWDMemberAnnouncement />
+          </ProtectedRoute>
+        }
+      />
+      <Route 
+        path="/pwd-profile" 
+        element={
+          <ProtectedRoute allowedRoles={["PWDMember"]}>
+            <PWDProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route 
+        path="/pwd-support" 
+        element={
+          <ProtectedRoute allowedRoles={["PWDMember"]}>
+            <PWDMemberSupportDesk />
           </ProtectedRoute>
         }
       />
@@ -237,39 +233,6 @@ function AppContent() {
         element={
           <ProtectedRoute allowedRoles={["BarangayPresident"]}>
             <BarangayPresidentAnnouncement />
-          </ProtectedRoute>
-        }
-      /> */
-      {/* PWD Member Routes */}
-      <Route 
-        path="/pwd-dashboard" 
-        element={
-          <ProtectedRoute allowedRoles={["PWDMember"]}>
-            <PWDMemberDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
-        path="/pwd-announcements" 
-        element={
-          <ProtectedRoute allowedRoles={["PWDMember"]}>
-            <PWDMemberAnnouncement />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
-        path="/pwd-profile" 
-        element={
-          <ProtectedRoute allowedRoles={["PWDMember"]}>
-            <PWDProfile />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
-        path="/pwd-support" 
-        element={
-          <ProtectedRoute allowedRoles={["PWDMember"]}>
-            <PWDMemberSupportDesk />
           </ProtectedRoute>
         }
       />

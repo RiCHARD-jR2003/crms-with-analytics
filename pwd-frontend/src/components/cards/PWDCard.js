@@ -556,6 +556,7 @@ function PWDCard() {
                         placeholder="Search members..."
                         value={filters.search}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
+                        autoFocus={false}
                         sx={{ 
                           width: { xs: 150, sm: 180, md: 200 },
                           '& .MuiOutlinedInput-root': {
@@ -651,6 +652,7 @@ function PWDCard() {
                             <Select
                               value={filters.barangay}
                               onChange={(e) => handleFilterChange('barangay', e.target.value)}
+                              autoFocus={false}
                               label="Barangay"
                               sx={{
                                 backgroundColor: '#FFFFFF',
@@ -686,6 +688,7 @@ function PWDCard() {
                             <Select
                               value={filters.disability}
                               onChange={(e) => handleFilterChange('disability', e.target.value)}
+                              autoFocus={false}
                               label="Disability Type"
                               sx={{
                                 backgroundColor: '#FFFFFF',
@@ -721,6 +724,7 @@ function PWDCard() {
                             <Select
                               value={filters.ageRange}
                               onChange={(e) => handleFilterChange('ageRange', e.target.value)}
+                              autoFocus={false}
                               label="Age Range"
                               sx={{
                                 backgroundColor: '#FFFFFF',
@@ -756,6 +760,7 @@ function PWDCard() {
                             <Select
                               value={filters.status}
                               onChange={(e) => handleFilterChange('status', e.target.value)}
+                              autoFocus={false}
                               label="Status"
                               sx={{
                                 backgroundColor: '#FFFFFF',

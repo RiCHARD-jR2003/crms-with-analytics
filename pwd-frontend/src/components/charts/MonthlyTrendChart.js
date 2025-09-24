@@ -39,28 +39,33 @@ const MonthlyTrendChart = ({ data }) => {
     );
   }
 
-  // Sample monthly data - you can replace this with real data from your API
-  const monthlyData = [
-    { month: 'Aug 2024', registrations: 2 },
-    { month: 'Sep 2024', registrations: 3 },
-    { month: 'Oct 2024', registrations: 1 },
-    { month: 'Nov 2024', registrations: 1 },
-    { month: 'Dec 2024', registrations: 1 },
-    { month: 'Jan 2025', registrations: 0 },
-  ];
-
+  // Use the actual data passed to the component
   const chartData = {
-    labels: monthlyData.map(item => item.month),
+    labels: data.map(item => item.month),
     datasets: [
       {
         label: 'New Registrations',
-        data: monthlyData.map(item => item.registrations),
+        data: data.map(item => item.registrations || 0),
         borderColor: 'rgba(54, 162, 235, 1)',
         backgroundColor: 'rgba(54, 162, 235, 0.1)',
         borderWidth: 3,
         fill: true,
         tension: 0.4,
         pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+      },
+      {
+        label: 'Applications',
+        data: data.map(item => item.applications || 0),
+        borderColor: 'rgba(255, 99, 132, 1)',
+        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgba(255, 99, 132, 1)',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: 6,
@@ -84,7 +89,8 @@ const MonthlyTrendChart = ({ data }) => {
             return context[0].label;
           },
           label: function(context) {
-            return `New Registrations: ${context.parsed.y}`;
+            const value = context.parsed.y || 0;
+            return `${context.dataset.label}: ${value}`;
           },
         },
       },

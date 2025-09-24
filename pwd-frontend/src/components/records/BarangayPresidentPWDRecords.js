@@ -77,6 +77,7 @@ function BarangayPresidentPWDRecords() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const barangay = currentUser?.barangay || 'Unknown Barangay';
       
       // Fetch applications pending barangay approval for this barangay
@@ -298,16 +299,16 @@ function BarangayPresidentPWDRecords() {
     switch (status) {
       case 'Active':
       case 'Approved':
-        return '#27AE60';
+        return '#000000';
       case 'Pending':
       case 'Pending Barangay Approval':
       case 'Pending Admin Approval':
-        return '#F39C12';
+        return '#000000';
       case 'Inactive':
       case 'Rejected':
-        return '#E74C3C';
+        return '#000000';
       default:
-        return '#7F8C8D';
+        return '#000000';
     }
   };
 
@@ -334,7 +335,7 @@ function BarangayPresidentPWDRecords() {
   ];
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F8FAFC' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#FFFFFF' }}>
       <BarangayPresidentSidebar />
       
       {/* Main content */}
@@ -344,21 +345,57 @@ function BarangayPresidentPWDRecords() {
         flexDirection: 'column', 
         ml: '280px',
         width: 'calc(100% - 280px)',
-        bgcolor: '#F7F9FB'
+        bgcolor: '#FFFFFF'
       }}>
         <Box sx={{ p: 3 }}>
           {/* Header */}
           <Box sx={{ mb: 3 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: '2rem', color: '#2C3E50', mb: 1 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '2rem', color: '#000000', mb: 1 }}>
               PWD Records - {currentUser?.barangay || 'Your Barangay'}
             </Typography>
-            <Typography sx={{ color: '#7F8C8D', fontSize: '1rem' }}>
+            <Typography sx={{ color: '#000000', fontSize: '1rem' }}>
               Manage and view PWD records for {currentUser?.barangay || 'your barangay'}
             </Typography>
           </Box>
 
+          {/* Loading State */}
+          {loading && (
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              height: '200px',
+              bgcolor: 'white',
+              borderRadius: 2,
+              border: '1px solid #000000'
+            }}>
+              <Typography sx={{ color: '#000000' }}>
+                Loading PWD records...
+              </Typography>
+            </Box>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <Box sx={{ 
+              p: 3, 
+              bgcolor: '#FFFFFF', 
+              borderRadius: 2, 
+              border: '1px solid #000000',
+              mb: 3
+            }}>
+              <Typography sx={{ color: '#000000', fontWeight: 600 }}>
+                Error: {error}
+              </Typography>
+              <Typography sx={{ color: '#000000', mt: 1 }}>
+                Please try refreshing the page or contact support if the issue persists.
+              </Typography>
+            </Box>
+          )}
+
+
           {/* Tabs and Controls */}
-          <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: '1px solid #E0E0E0', mb: 3 }}>
+          <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: '1px solid #000000', mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
               <Grid item>
                 <Tabs 
@@ -367,17 +404,17 @@ function BarangayPresidentPWDRecords() {
                   sx={{ 
                     minHeight: 40,
                     '& .MuiTab-root': {
-                      color: '#FFFFFF',
+                      color: '#000000',
                       fontWeight: 600,
                       textTransform: 'none',
-                      bgcolor: '#3498DB',
+                      bgcolor: '#FFFFFF',
                       borderRadius: '8px 8px 0 0',
                       mx: 0.5,
                       px: 3,
                       '&.Mui-selected': {
-                        color: '#FFFFFF !important',
+                        color: '#000000 !important',
                         fontWeight: 700,
-                        bgcolor: '#2C3E50 !important'
+                        bgcolor: '#FFFFFF !important'
                       }
                     },
                     '& .MuiTabs-indicator': {
@@ -395,13 +432,13 @@ function BarangayPresidentPWDRecords() {
                   variant="outlined" 
                   sx={{ 
                     textTransform: 'none',
-                    color: '#FFFFFF',
-                    bgcolor: '#3498DB',
-                    borderColor: '#3498DB',
+                    color: '#000000',
+                    bgcolor: '#FFFFFF',
+                    borderColor: '#000000',
                     '&:hover': {
-                      borderColor: '#2980B9',
-                      bgcolor: '#2980B9',
-                      color: '#FFFFFF'
+                      borderColor: '#000000',
+                      bgcolor: '#FFFFFF',
+                      color: '#000000'
                     }
                   }}
                 >
@@ -415,13 +452,13 @@ function BarangayPresidentPWDRecords() {
                   onClick={() => setShowFilters(!showFilters)}
                   sx={{ 
                     textTransform: 'none',
-                    bgcolor: showFilters ? '#27AE60' : '#FFFFFF',
-                    color: showFilters ? '#FFFFFF' : '#2C3E50',
-                    borderColor: '#3498DB',
+                    bgcolor: showFilters ? '#FFFFFF' : '#FFFFFF',
+                    color: showFilters ? '#000000' : '#000000',
+                    borderColor: '#000000',
                     '&:hover': {
-                      bgcolor: showFilters ? '#229954' : '#F8FAFC',
-                      borderColor: '#3498DB',
-                      color: showFilters ? '#FFFFFF' : '#2C3E50'
+                      bgcolor: showFilters ? '#FFFFFF' : '#FFFFFF',
+                      borderColor: '#000000',
+                      color: showFilters ? '#000000' : '#000000'
                     }
                   }}
                 >
@@ -440,15 +477,15 @@ function BarangayPresidentPWDRecords() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: 2,
                         bgcolor: '#FFFFFF',
-                        '& fieldset': { borderColor: '#E0E0E0' },
-                        '&:hover fieldset': { borderColor: '#BDC3C7' },
-                        '&.Mui-focused fieldset': { borderColor: '#3498DB' },
+                        '& fieldset': { borderColor: '#000000' },
+                        '&:hover fieldset': { borderColor: '#000000' },
+                        '&.Mui-focused fieldset': { borderColor: '#000000' },
                       },
                       '& .MuiInputBase-input': {
-                        color: '#2C3E50',
+                        color: '#000000',
                         fontSize: '0.9rem',
                         '&::placeholder': {
-                          color: '#95A5A6',
+                          color: '#000000',
                           opacity: 1
                         }
                       }
@@ -456,7 +493,7 @@ function BarangayPresidentPWDRecords() {
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
-                          <IconButton size="small" sx={{ color: '#7F8C8D' }}>
+                          <IconButton size="small" sx={{ color: '#000000' }}>
                             <SearchIcon />
                           </IconButton>
                         </InputAdornment>
@@ -469,9 +506,9 @@ function BarangayPresidentPWDRecords() {
 
             {/* Filter Section */}
             <Collapse in={showFilters}>
-              <Box sx={{ mt: 2, p: 3, bgcolor: '#F8FAFC', borderRadius: 1, border: '1px solid #E0E0E0' }}>
+              <Box sx={{ mt: 2, p: 3, bgcolor: '#FFFFFF', borderRadius: 1, border: '1px solid #000000' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#000000' }}>
                     Search Filters
                   </Typography>
                   {hasActiveFilters && (
@@ -481,10 +518,10 @@ function BarangayPresidentPWDRecords() {
                       size="small"
                       sx={{ 
                         textTransform: 'none', 
-                        color: '#E74C3C',
+                        color: '#000000',
                         '&:hover': {
-                          bgcolor: '#FDF2F2',
-                          color: '#C0392B'
+                          bgcolor: '#FFFFFF',
+                          color: '#000000'
                         }
                       }}
                     >
@@ -496,7 +533,7 @@ function BarangayPresidentPWDRecords() {
                 <Grid container spacing={3}>
                   <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth size="small">
-                      <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Barangay</InputLabel>
+                      <InputLabel sx={{ color: '#000000', fontWeight: 600 }}>Barangay</InputLabel>
                       <Select
                         value={filters.barangay}
                         onChange={(e) => handleFilterChange('barangay', e.target.value)}
@@ -504,19 +541,19 @@ function BarangayPresidentPWDRecords() {
                         sx={{
                           bgcolor: '#FFFFFF',
                           '& .MuiSelect-select': {
-                            color: '#2C3E50',
+                            color: '#000000',
                             fontWeight: 600,
                             fontSize: '0.9rem',
                             py: 1.5
                           },
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#E0E0E0'
+                            borderColor: '#000000'
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#BDC3C7'
+                            borderColor: '#000000'
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#3498DB'
+                            borderColor: '#000000'
                           }
                         }}
                         MenuProps={{
@@ -524,18 +561,18 @@ function BarangayPresidentPWDRecords() {
                             sx: {
                               bgcolor: '#FFFFFF',
                               '& .MuiMenuItem-root': {
-                                color: '#2C3E50',
+                                color: '#000000',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5,
                                 '&:hover': {
-                                  bgcolor: '#F8FAFC'
+                                  bgcolor: '#FFFFFF'
                                 },
                                 '&.Mui-selected': {
-                                  bgcolor: '#E3F2FD',
-                                  color: '#1976D2',
+                                  bgcolor: '#FFFFFF',
+                                  color: '#000000',
                                   '&:hover': {
-                                    bgcolor: '#E3F2FD'
+                                    bgcolor: '#FFFFFF'
                                   }
                                 }
                               }
@@ -543,8 +580,8 @@ function BarangayPresidentPWDRecords() {
                           }
                         }}
                       >
-                        <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Barangays</MenuItem>
-                        <MenuItem value={currentUser?.barangay || 'Barangay Poblacion'} sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                        <MenuItem value="" sx={{ color: '#000000', fontWeight: 600 }}>All Barangays</MenuItem>
+                        <MenuItem value={currentUser?.barangay || 'Barangay Poblacion'} sx={{ color: '#000000', fontWeight: 600 }}>
                           {currentUser?.barangay || 'Barangay Poblacion'}
                         </MenuItem>
                       </Select>
@@ -553,7 +590,7 @@ function BarangayPresidentPWDRecords() {
 
                   <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth size="small">
-                      <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Disability Type</InputLabel>
+                      <InputLabel sx={{ color: '#000000', fontWeight: 600 }}>Disability Type</InputLabel>
                       <Select
                         value={filters.disability}
                         onChange={(e) => handleFilterChange('disability', e.target.value)}
@@ -561,7 +598,7 @@ function BarangayPresidentPWDRecords() {
                         sx={{
                           bgcolor: '#FFFFFF',
                           '& .MuiSelect-select': {
-                            color: '#2C3E50',
+                            color: '#000000',
                             fontWeight: 600,
                             fontSize: '0.9rem',
                             py: 1.5
@@ -581,18 +618,18 @@ function BarangayPresidentPWDRecords() {
                             sx: {
                               bgcolor: '#FFFFFF',
                               '& .MuiMenuItem-root': {
-                                color: '#2C3E50',
+                                color: '#000000',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5,
                                 '&:hover': {
-                                  bgcolor: '#F8FAFC'
+                                  bgcolor: '#FFFFFF'
                                 },
                                 '&.Mui-selected': {
-                                  bgcolor: '#E3F2FD',
-                                  color: '#1976D2',
+                                  bgcolor: '#FFFFFF',
+                                  color: '#000000',
                                   '&:hover': {
-                                    bgcolor: '#E3F2FD'
+                                    bgcolor: '#FFFFFF'
                                   }
                                 }
                               }
@@ -600,19 +637,19 @@ function BarangayPresidentPWDRecords() {
                           }
                         }}
                       >
-                        <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Types</MenuItem>
-                        <MenuItem value="Visual Impairment" sx={{ color: '#2C3E50', fontWeight: 600 }}>Visual Impairment</MenuItem>
-                        <MenuItem value="Physical Disability" sx={{ color: '#2C3E50', fontWeight: 600 }}>Physical Disability</MenuItem>
-                        <MenuItem value="Hearing Impairment" sx={{ color: '#2C3E50', fontWeight: 600 }}>Hearing Impairment</MenuItem>
-                        <MenuItem value="Intellectual Disability" sx={{ color: '#2C3E50', fontWeight: 600 }}>Intellectual Disability</MenuItem>
-                        <MenuItem value="Mental Health" sx={{ color: '#2C3E50', fontWeight: 600 }}>Mental Health</MenuItem>
+                        <MenuItem value="" sx={{ color: '#000000', fontWeight: 600 }}>All Types</MenuItem>
+                        <MenuItem value="Visual Impairment" sx={{ color: '#000000', fontWeight: 600 }}>Visual Impairment</MenuItem>
+                        <MenuItem value="Physical Disability" sx={{ color: '#000000', fontWeight: 600 }}>Physical Disability</MenuItem>
+                        <MenuItem value="Hearing Impairment" sx={{ color: '#000000', fontWeight: 600 }}>Hearing Impairment</MenuItem>
+                        <MenuItem value="Intellectual Disability" sx={{ color: '#000000', fontWeight: 600 }}>Intellectual Disability</MenuItem>
+                        <MenuItem value="Mental Health" sx={{ color: '#000000', fontWeight: 600 }}>Mental Health</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
 
                   <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth size="small">
-                      <InputLabel sx={{ color: '#2C3E50', fontWeight: 600 }}>Status</InputLabel>
+                      <InputLabel sx={{ color: '#000000', fontWeight: 600 }}>Status</InputLabel>
                       <Select
                         value={filters.status}
                         onChange={(e) => handleFilterChange('status', e.target.value)}
@@ -620,7 +657,7 @@ function BarangayPresidentPWDRecords() {
                         sx={{
                           bgcolor: '#FFFFFF',
                           '& .MuiSelect-select': {
-                            color: '#2C3E50',
+                            color: '#000000',
                             fontWeight: 600,
                             fontSize: '0.9rem',
                             py: 1.5
@@ -640,18 +677,18 @@ function BarangayPresidentPWDRecords() {
                             sx: {
                               bgcolor: '#FFFFFF',
                               '& .MuiMenuItem-root': {
-                                color: '#2C3E50',
+                                color: '#000000',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
                                 py: 1.5,
                                 '&:hover': {
-                                  bgcolor: '#F8FAFC'
+                                  bgcolor: '#FFFFFF'
                                 },
                                 '&.Mui-selected': {
-                                  bgcolor: '#E3F2FD',
-                                  color: '#1976D2',
+                                  bgcolor: '#FFFFFF',
+                                  color: '#000000',
                                   '&:hover': {
-                                    bgcolor: '#E3F2FD'
+                                    bgcolor: '#FFFFFF'
                                   }
                                 }
                               }
@@ -659,17 +696,17 @@ function BarangayPresidentPWDRecords() {
                           }
                         }}
                       >
-                        <MenuItem value="" sx={{ color: '#95A5A6', fontWeight: 600 }}>All Status</MenuItem>
+                        <MenuItem value="" sx={{ color: '#000000', fontWeight: 600 }}>All Status</MenuItem>
                         {tab === 0 ? (
                           <>
-                            <MenuItem value="Active" sx={{ color: '#2C3E50', fontWeight: 600 }}>Active</MenuItem>
-                            <MenuItem value="Inactive" sx={{ color: '#2C3E50', fontWeight: 600 }}>Inactive</MenuItem>
+                            <MenuItem value="Active" sx={{ color: '#000000', fontWeight: 600 }}>Active</MenuItem>
+                            <MenuItem value="Inactive" sx={{ color: '#000000', fontWeight: 600 }}>Inactive</MenuItem>
                           </>
                         ) : (
                           <>
-                            <MenuItem value="Pending" sx={{ color: '#2C3E50', fontWeight: 600 }}>Pending</MenuItem>
-                            <MenuItem value="Approved" sx={{ color: '#2C3E50', fontWeight: 600 }}>Approved</MenuItem>
-                            <MenuItem value="Rejected" sx={{ color: '#2C3E50', fontWeight: 600 }}>Rejected</MenuItem>
+                            <MenuItem value="Pending" sx={{ color: '#000000', fontWeight: 600 }}>Pending</MenuItem>
+                            <MenuItem value="Approved" sx={{ color: '#000000', fontWeight: 600 }}>Approved</MenuItem>
+                            <MenuItem value="Rejected" sx={{ color: '#000000', fontWeight: 600 }}>Rejected</MenuItem>
                           </>
                         )}
                       </Select>
@@ -681,20 +718,20 @@ function BarangayPresidentPWDRecords() {
           </Paper>
 
           {/* Table */}
-          <Paper elevation={0} sx={{ border: '1px solid #E0E0E0', borderRadius: 2 }}>
-            <TableContainer sx={{ maxHeight: 'calc(100vh - 400px)' }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
+          <Paper elevation={0} sx={{ border: '1px solid #000000', borderRadius: 2 }}>
+            <TableContainer sx={{ maxHeight: 'calc(100vh - 400px)', bgcolor: '#FFFFFF' }}>
+              <Table stickyHeader sx={{ bgcolor: '#FFFFFF' }}>
+                <TableHead sx={{ bgcolor: '#FFFFFF' }}>
+                  <TableRow sx={{ bgcolor: '#FFFFFF' }}>
                     {columns.map((column) => (
                                              <TableCell
                          key={column.id}
                          sx={{
-                           backgroundColor: '#2C3E50',
-                           color: '#FFFFFF',
+                           backgroundColor: '#FFFFFF',
+                           color: '#000000',
                            fontWeight: 700,
                            fontSize: '0.95rem',
-                           borderBottom: '2px solid #34495E',
+                           borderBottom: '2px solid #000000',
                            textTransform: 'uppercase',
                            letterSpacing: '0.5px'
                          }}
@@ -711,8 +748,8 @@ function BarangayPresidentPWDRecords() {
                         <TableCell 
                           key={column.id}
                           sx={{ 
-                            color: '#2C3E50',
-                            borderBottom: '1px solid #E0E0E0',
+                            color: '#000000',
+                            borderBottom: '1px solid #000000',
                             fontWeight: 500
                           }}
                         >
@@ -741,16 +778,16 @@ function BarangayPresidentPWDRecords() {
                                 startIcon={<VisibilityIcon />}
                                 onClick={() => handleViewDetails(row)}
                                 sx={{
-                                  borderColor: '#3498DB',
-                                  color: '#3498DB',
+                                  borderColor: '#000000',
+                                  color: '#000000',
                                   textTransform: 'none',
                                   fontSize: '0.7rem',
                                   py: 0.5,
                                   px: 1,
                                   '&:hover': {
-                                    borderColor: '#2980B9',
-                                    bgcolor: '#3498DB',
-                                    color: '#FFFFFF'
+                                    borderColor: '#000000',
+                                    bgcolor: '#FFFFFF',
+                                    color: '#000000'
                                   }
                                 }}
                               >
@@ -761,13 +798,16 @@ function BarangayPresidentPWDRecords() {
                                 size="small"
                                 onClick={() => handleApproveApplication(row.applicationID)}
                                 sx={{
-                                  bgcolor: '#27AE60',
+                                  bgcolor: '#FFFFFF',
+                                  color: '#000000',
                                   textTransform: 'none',
                                   fontSize: '0.7rem',
                                   py: 0.5,
                                   px: 1,
+                                  borderColor: '#000000',
                                   '&:hover': {
-                                    bgcolor: '#229954'
+                                    bgcolor: '#FFFFFF',
+                                    color: '#000000'
                                   }
                                 }}
                               >
@@ -778,15 +818,16 @@ function BarangayPresidentPWDRecords() {
                                 size="small"
                                 onClick={() => handleRejectApplication(row.applicationID)}
                                 sx={{
-                                  borderColor: '#E74C3C',
-                                  color: '#E74C3C',
+                                  borderColor: '#000000',
+                                  color: '#000000',
                                   textTransform: 'none',
                                   fontSize: '0.7rem',
                                   py: 0.5,
                                   px: 1,
                                   '&:hover': {
-                                    borderColor: '#C0392B',
-                                    bgcolor: '#FDF2F2'
+                                    borderColor: '#000000',
+                                    bgcolor: '#FFFFFF',
+                                    color: '#000000'
                                   }
                                 }}
                               >
@@ -827,10 +868,25 @@ function BarangayPresidentPWDRecords() {
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
               sx={{
-                color: '#2C3E50',
+                color: '#000000',
+                bgcolor: '#FFFFFF',
                 '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                  color: '#2C3E50',
+                  color: '#000000',
                   fontWeight: 500
+                },
+                '& .MuiTablePagination-select': {
+                  color: '#000000',
+                  bgcolor: '#FFFFFF'
+                },
+                '& .MuiTablePagination-actions': {
+                  color: '#000000'
+                },
+                '& .MuiIconButton-root': {
+                  color: '#000000',
+                  '&:hover': {
+                    bgcolor: '#FFFFFF',
+                    color: '#000000'
+                  }
                 }
               }}
             />
@@ -860,8 +916,8 @@ function BarangayPresidentPWDRecords() {
         }}
       >
         <DialogTitle sx={{ 
-          bgcolor: '#2C3E50', 
-          color: 'white', 
+          bgcolor: '#FFFFFF', 
+          color: '#000000', 
           textAlign: 'center',
           py: 2,
           position: 'relative'
@@ -890,20 +946,20 @@ function BarangayPresidentPWDRecords() {
               <Paper sx={{ 
                 p: 3, 
                 mb: 3, 
-                bgcolor: '#F8F9FA',
-                border: '2px solid #E9ECEF',
+                bgcolor: '#FFFFFF',
+                border: '2px solid #000000',
                 borderRadius: 2
               }}>
                 <Box sx={{ textAlign: 'center', mb: 3 }}>
                   <Typography variant="h5" sx={{ 
                     fontWeight: 'bold', 
-                    color: '#2C3E50',
+                    color: '#000000',
                     mb: 1
                   }}>
                     CABUYAO PDAO RMS
                   </Typography>
                   <Typography variant="h6" sx={{ 
-                    color: '#7F8C8D',
+                    color: '#000000',
                     fontWeight: 500
                   }}>
                     Persons with Disabilities Application Form
@@ -944,7 +1000,7 @@ function BarangayPresidentPWDRecords() {
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       First Name:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -952,7 +1008,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Last Name:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -960,7 +1016,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Middle Name:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -968,7 +1024,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Birth Date:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -976,7 +1032,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Gender:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -984,7 +1040,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Civil Status:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1008,7 +1064,7 @@ function BarangayPresidentPWDRecords() {
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Disability Type:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1016,7 +1072,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Disability Cause:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1024,7 +1080,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Disability Date:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1048,7 +1104,7 @@ function BarangayPresidentPWDRecords() {
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Email Address:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1056,7 +1112,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Contact Number:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1064,7 +1120,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Emergency Contact:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1072,7 +1128,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Emergency Phone:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1080,7 +1136,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Emergency Relationship:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1104,7 +1160,7 @@ function BarangayPresidentPWDRecords() {
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Complete Address:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1112,7 +1168,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Barangay:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1120,7 +1176,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       City:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1128,7 +1184,7 @@ function BarangayPresidentPWDRecords() {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Postal Code:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>
@@ -1152,7 +1208,7 @@ function BarangayPresidentPWDRecords() {
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 1 }}>
                       ID Picture (2x2):
                     </Typography>
                     {selectedApplication.idPicture ? (
@@ -1174,7 +1230,7 @@ function BarangayPresidentPWDRecords() {
                         />
                         <Typography variant="body2" sx={{ 
                           display: 'none', 
-                          color: '#7F8C8D', 
+                          color: '#000000', 
                           fontStyle: 'italic',
                           mt: 1
                         }}>
@@ -1197,7 +1253,7 @@ function BarangayPresidentPWDRecords() {
                   </Grid>
                   
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 1 }}>
                       Medical Certificate:
                     </Typography>
                     {selectedApplication.medicalCertificate ? (
@@ -1219,7 +1275,7 @@ function BarangayPresidentPWDRecords() {
                         />
                         <Typography variant="body2" sx={{ 
                           display: 'none', 
-                          color: '#7F8C8D', 
+                          color: '#000000', 
                           fontStyle: 'italic',
                           mt: 1
                         }}>
@@ -1242,7 +1298,7 @@ function BarangayPresidentPWDRecords() {
                   </Grid>
                   
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 1 }}>
                       Barangay Clearance:
                     </Typography>
                     {selectedApplication.barangayClearance ? (
@@ -1264,7 +1320,7 @@ function BarangayPresidentPWDRecords() {
                         />
                         <Typography variant="body2" sx={{ 
                           display: 'none', 
-                          color: '#7F8C8D', 
+                          color: '#000000', 
                           fontStyle: 'italic',
                           mt: 1
                         }}>
@@ -1302,22 +1358,22 @@ function BarangayPresidentPWDRecords() {
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Current Status:
                     </Typography>
                     <Chip 
                       label={selectedApplication.status || 'Pending'} 
                       sx={{ 
-                        bgcolor: (selectedApplication.status || 'Pending') === 'Approved' ? '#27AE60' : 
-                               (selectedApplication.status || 'Pending') === 'Pending' ? '#F39C12' : 
-                               (selectedApplication.status || 'Pending') === 'Rejected' ? '#E74C3C' : '#95A5A6',
-                        color: '#FFFFFF',
+                        bgcolor: (selectedApplication.status || 'Pending') === 'Approved' ? '#FFFFFF' : 
+                               (selectedApplication.status || 'Pending') === 'Pending' ? '#FFFFFF' : 
+                               (selectedApplication.status || 'Pending') === 'Rejected' ? '#FFFFFF' : '#FFFFFF',
+                        color: '#000000',
                         fontWeight: 'bold'
                       }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#34495E', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#000000', mb: 0.5 }}>
                       Remarks:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#2C3E50', mb: 1 }}>

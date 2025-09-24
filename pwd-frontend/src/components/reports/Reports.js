@@ -113,6 +113,10 @@ const Reports = () => {
   const [pdfBlob, setPdfBlob] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState('all');
+  const [timeFilter, setTimeFilter] = useState('monthly'); // daily, weekly, monthly, annually
+  const [comparisonPeriod, setComparisonPeriod] = useState('previous'); // previous, same_period_last_year
+  const [trendAnalysis, setTrendAnalysis] = useState({});
+  const [filteredData, setFilteredData] = useState({});
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
   const [contextualSuggestions, setContextualSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -195,37 +199,147 @@ const Reports = () => {
 
   useEffect(() => {
     loadData();
-  }, [selectedDateRange]);
+  }, [selectedDateRange, timeFilter, comparisonPeriod]);
 
-  // Date range helper function
-  const getDateRange = (range) => {
+  // Enhanced time filtering functions
+  const getTimeFilterRanges = (timeFilter, comparisonPeriod) => {
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const current = new Date(now);
     
-    switch (range) {
-      case 'week':
-        const weekAgo = new Date(startOfDay);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return { start: weekAgo, end: now };
-      
-      case 'month':
-        const monthAgo = new Date(startOfDay);
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        return { start: monthAgo, end: now };
-      
-      case 'quarter':
-        const quarterAgo = new Date(startOfDay);
-        quarterAgo.setMonth(quarterAgo.getMonth() - 3);
-        return { start: quarterAgo, end: now };
-      
-      case 'year':
-        const yearAgo = new Date(startOfDay);
-        yearAgo.setFullYear(yearAgo.getFullYear() - 1);
-        return { start: yearAgo, end: now };
-      
+    let currentStart, currentEnd, comparisonStart, comparisonEnd;
+    
+    switch (timeFilter) {
+      case 'daily':
+        currentStart = new Date(current.getFullYear(), current.getMonth(), current.getDate());
+        currentEnd = new Date(currentStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+        
+        if (comparisonPeriod === 'previous') {
+          comparisonStart = new Date(currentStart.getTime() - 24 * 60 * 60 * 1000);
+          comparisonEnd = new Date(currentStart.getTime() - 1);
+        } else { // same_period_last_year
+          comparisonStart = new Date(currentStart.getFullYear() - 1, currentStart.getMonth(), currentStart.getDate());
+          comparisonEnd = new Date(comparisonStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+        }
+        break;
+        
+      case 'weekly':
+        const dayOfWeek = current.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        currentStart = new Date(current.getTime() - daysToMonday * 24 * 60 * 60 * 1000);
+        currentStart.setHours(0, 0, 0, 0);
+        currentEnd = new Date(currentStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+        
+        if (comparisonPeriod === 'previous') {
+          comparisonStart = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+          comparisonEnd = new Date(currentStart.getTime() - 1);
+        } else { // same_period_last_year
+          comparisonStart = new Date(currentStart.getFullYear() - 1, currentStart.getMonth(), currentStart.getDate());
+          comparisonEnd = new Date(comparisonStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+        }
+        break;
+        
+      case 'monthly':
+        currentStart = new Date(current.getFullYear(), current.getMonth(), 1);
+        currentEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
+        
+        if (comparisonPeriod === 'previous') {
+          comparisonStart = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+          comparisonEnd = new Date(current.getFullYear(), current.getMonth(), 0, 23, 59, 59, 999);
+        } else { // same_period_last_year
+          comparisonStart = new Date(current.getFullYear() - 1, current.getMonth(), 1);
+          comparisonEnd = new Date(current.getFullYear() - 1, current.getMonth() + 1, 0, 23, 59, 59, 999);
+        }
+        break;
+        
+      case 'annually':
+        currentStart = new Date(current.getFullYear(), 0, 1);
+        currentEnd = new Date(current.getFullYear(), 11, 31, 23, 59, 59, 999);
+        
+        if (comparisonPeriod === 'previous') {
+          comparisonStart = new Date(current.getFullYear() - 1, 0, 1);
+          comparisonEnd = new Date(current.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+        } else { // same_period_last_year
+          comparisonStart = new Date(current.getFullYear() - 2, 0, 1);
+          comparisonEnd = new Date(current.getFullYear() - 2, 11, 31, 23, 59, 59, 999);
+        }
+        break;
+        
       default:
-        return null; // All time
+        return null;
     }
+    
+    return {
+      current: { start: currentStart, end: currentEnd },
+      comparison: { start: comparisonStart, end: comparisonEnd }
+    };
+  };
+
+  // Enhanced data filtering with time-based analysis
+  const filterDataByTimeRange = (data, timeFilter, comparisonPeriod, dateField = 'created_at') => {
+    const ranges = getTimeFilterRanges(timeFilter, comparisonPeriod);
+    if (!ranges) return { current: data, comparison: [] };
+    
+    const currentData = data.filter(item => {
+      if (!item[dateField]) return false;
+      const itemDate = new Date(item[dateField]);
+      return itemDate >= ranges.current.start && itemDate <= ranges.current.end;
+    });
+    
+    const comparisonData = data.filter(item => {
+      if (!item[dateField]) return false;
+      const itemDate = new Date(item[dateField]);
+      return itemDate >= ranges.comparison.start && itemDate <= ranges.comparison.end;
+    });
+    
+    return { current: currentData, comparison: comparisonData };
+  };
+
+  // Generate trend analysis
+  const generateTrendAnalysis = (currentData, comparisonData, metric) => {
+    const currentCount = currentData.length;
+    const comparisonCount = comparisonData.length;
+    
+    if (comparisonCount === 0) {
+      return {
+        trend: 'new',
+        percentage: 100,
+        direction: 'up',
+        message: 'No previous data available for comparison',
+        significance: 'neutral'
+      };
+    }
+    
+    const percentageChange = ((currentCount - comparisonCount) / comparisonCount) * 100;
+    const absoluteChange = currentCount - comparisonCount;
+    
+    let trend, direction, significance;
+    
+    if (Math.abs(percentageChange) < 5) {
+      trend = 'stable';
+      direction = 'stable';
+      significance = 'neutral';
+    } else if (percentageChange > 0) {
+      trend = 'increasing';
+      direction = 'up';
+      significance = Math.abs(percentageChange) > 20 ? 'high' : 'medium';
+    } else {
+      trend = 'decreasing';
+      direction = 'down';
+      significance = Math.abs(percentageChange) > 20 ? 'high' : 'medium';
+    }
+    
+    const message = `${trend} by ${Math.abs(percentageChange).toFixed(1)}% (${absoluteChange > 0 ? '+' : ''}${absoluteChange} ${metric})`;
+    
+    return {
+      trend,
+      percentage: Math.abs(percentageChange),
+      direction,
+      message,
+      significance,
+      currentCount,
+      comparisonCount,
+      absoluteChange
+    };
   };
 
   // Filter data by date range
@@ -1077,6 +1191,182 @@ const Reports = () => {
     }
   };
 
+  // Enhanced textual analysis function with trend analysis
+  const generateTextualAnalysis = (data, reportType) => {
+    const analysis = {
+      summary: '',
+      keyInsights: [],
+      trends: [],
+      recommendations: [],
+      emptyDataMessage: '',
+      trendAnalysis: {}
+    };
+
+    // Get trend analysis for the current time filter
+    const ranges = getTimeFilterRanges(timeFilter, comparisonPeriod);
+    if (ranges) {
+      const currentData = data.totalRegistrations ? 
+        filterDataByTimeRange([], timeFilter, comparisonPeriod).current : [];
+      const comparisonData = data.totalRegistrations ? 
+        filterDataByTimeRange([], timeFilter, comparisonPeriod).comparison : [];
+      
+      analysis.trendAnalysis = generateTrendAnalysis(
+        currentData, 
+        comparisonData, 
+        'registrations'
+      );
+    }
+
+    switch (reportType) {
+      case 'registration':
+        const { totalRegistrations, monthlyTrends, barangayDistribution, disabilityTypeDistribution, ageGroupDistribution } = data;
+        
+        if (totalRegistrations === 0) {
+          analysis.emptyDataMessage = 'No PWD registrations found in the selected time period. This could indicate that the registration system is new or there are no recent registrations.';
+          analysis.summary = 'The PWD registration system shows no current registrations.';
+          analysis.recommendations = [
+            'Review registration process and ensure it\'s accessible to potential PWD members',
+            'Check if there are any technical issues preventing registrations',
+            'Consider outreach programs to encourage PWD registration',
+            'Verify that the registration system is properly configured'
+          ];
+        } else {
+          analysis.summary = `The PWD registration system shows ${totalRegistrations} total registrations.`;
+          
+          // Add trend analysis to summary
+          if (analysis.trendAnalysis.trend !== 'new') {
+            analysis.summary += ` Compared to the ${comparisonPeriod === 'previous' ? 'previous' : 'same period last year'}, registrations are ${analysis.trendAnalysis.trend} by ${analysis.trendAnalysis.percentage.toFixed(1)}%.`;
+          }
+          
+          // Key insights
+          if (barangayDistribution.length > 0) {
+            const topBarangay = barangayDistribution[0];
+            analysis.keyInsights.push(`Top performing barangay: ${topBarangay.barangay} with ${topBarangay.count} registrations`);
+          }
+          
+          if (disabilityTypeDistribution.length > 0) {
+            const topDisability = disabilityTypeDistribution[0];
+            analysis.keyInsights.push(`Most common disability type: ${topDisability.disability} (${topDisability.count} cases)`);
+          }
+          
+          if (ageGroupDistribution.length > 0) {
+            const topAgeGroup = ageGroupDistribution[0];
+            analysis.keyInsights.push(`Primary age group: ${topAgeGroup.ageGroup} (${topAgeGroup.count} registrations)`);
+          }
+          
+          // Enhanced trends analysis
+          if (analysis.trendAnalysis.trend !== 'new') {
+            analysis.trends.push(`${analysis.trendAnalysis.message} compared to ${comparisonPeriod === 'previous' ? 'previous period' : 'same period last year'}`);
+            
+            if (analysis.trendAnalysis.significance === 'high') {
+              analysis.trends.push(`Significant ${analysis.trendAnalysis.trend} trend detected (${analysis.trendAnalysis.percentage.toFixed(1)}% change)`);
+            }
+          }
+          
+          // Recommendations based on trends
+          if (analysis.trendAnalysis.direction === 'down' && analysis.trendAnalysis.significance === 'high') {
+            analysis.recommendations.push('Investigate causes of declining registration trend and implement corrective measures');
+          } else if (analysis.trendAnalysis.direction === 'up' && analysis.trendAnalysis.significance === 'high') {
+            analysis.recommendations.push('Maintain current registration momentum and consider scaling up resources');
+          }
+          
+          if (barangayDistribution.some(b => b.count === 0)) {
+            analysis.recommendations.push('Focus outreach efforts on barangays with zero registrations');
+          }
+          if (ageGroupDistribution.length < 3) {
+            analysis.recommendations.push('Consider targeted outreach for underrepresented age groups');
+          }
+        }
+        break;
+        
+      case 'cards':
+        const { totalCardsIssued, totalCardsPending, averageProcessingTime } = data;
+        
+        if (totalCardsIssued === 0 && totalCardsPending === 0) {
+          analysis.emptyDataMessage = 'No PWD card data available. This indicates that either no cards have been issued or the card processing system is not yet operational.';
+          analysis.summary = 'The PWD card system shows no current activity.';
+          analysis.recommendations = [
+            'Verify that the card issuance system is properly configured',
+            'Check if there are pending applications that need processing',
+            'Ensure the card generation process is working correctly',
+            'Review the application approval workflow'
+          ];
+        } else {
+          analysis.summary = `Card processing system shows ${totalCardsIssued} cards issued and ${totalCardsPending} pending applications.`;
+          
+          if (totalCardsPending > 0) {
+            analysis.keyInsights.push(`${totalCardsPending} applications are pending card issuance`);
+          }
+          
+          if (averageProcessingTime > 0) {
+            analysis.keyInsights.push(`Average processing time: ${averageProcessingTime} days`);
+          }
+          
+          if (totalCardsPending > totalCardsIssued) {
+            analysis.trends.push('More applications are pending than cards issued, indicating potential processing delays');
+            analysis.recommendations.push('Review and optimize the card processing workflow');
+          }
+        }
+        break;
+        
+      case 'benefits':
+        const { totalBenefitsDistributed, totalBenefitsPending, totalBenefitValue } = data;
+        
+        if (totalBenefitsDistributed === 0 && totalBenefitsPending === 0) {
+          analysis.emptyDataMessage = 'No benefit distribution data available. This suggests that the benefit system is not yet active or no benefits have been distributed.';
+          analysis.summary = 'The benefit distribution system shows no current activity.';
+          analysis.recommendations = [
+            'Set up benefit programs and distribution channels',
+            'Verify that benefit applications are being processed',
+            'Check if there are eligible PWD members who haven\'t applied for benefits',
+            'Review the benefit approval and distribution workflow'
+          ];
+        } else {
+          analysis.summary = `Benefit system shows ${totalBenefitsDistributed} benefits distributed with a total value of ₱${totalBenefitValue?.toLocaleString() || '0'}.`;
+          
+          if (totalBenefitsPending > 0) {
+            analysis.keyInsights.push(`${totalBenefitsPending} benefit applications are pending approval`);
+          }
+          
+          if (totalBenefitValue > 0) {
+            analysis.keyInsights.push(`Total benefit value distributed: ₱${totalBenefitValue.toLocaleString()}`);
+          }
+        }
+        break;
+        
+      case 'complaints':
+        const { totalComplaints, resolvedComplaints, pendingComplaints, resolutionRate } = data;
+        
+        if (totalComplaints === 0) {
+          analysis.emptyDataMessage = 'No complaints data available. This could indicate that the complaint system is new, there are no complaints, or the system is not yet operational.';
+          analysis.summary = 'The complaint management system shows no current complaints.';
+          analysis.recommendations = [
+            'Verify that the complaint system is accessible to PWD members',
+            'Check if complaints are being properly recorded',
+            'Ensure the complaint submission process is working',
+            'Consider proactive feedback collection'
+          ];
+        } else {
+          analysis.summary = `Complaint management system shows ${totalComplaints} total complaints with a ${resolutionRate?.toFixed(1) || '0'}% resolution rate.`;
+          
+          if (pendingComplaints > 0) {
+            analysis.keyInsights.push(`${pendingComplaints} complaints are pending resolution`);
+          }
+          
+          if (resolutionRate < 80) {
+            analysis.trends.push('Resolution rate is below optimal levels');
+            analysis.recommendations.push('Improve complaint resolution processes and response times');
+          }
+        }
+        break;
+        
+      default:
+        analysis.summary = 'Analysis not available for this report type.';
+    }
+    
+    return analysis;
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -1435,9 +1725,114 @@ const Reports = () => {
 
   const renderPWDRegistrationReport = () => {
     const { totalRegistrations, monthlyTrends, barangayDistribution, disabilityTypeDistribution, ageGroupDistribution, recentRegistrations } = pwdRegistrationData;
+    const analysis = generateTextualAnalysis(pwdRegistrationData, 'registration');
     
     return (
       <Box>
+        {/* Textual Analysis Section */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC', border: '1px solid #E8E8E8' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+            📊 Data Analysis & Insights
+          </Typography>
+          
+          {analysis.emptyDataMessage ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {analysis.emptyDataMessage}
+              </Typography>
+            </Alert>
+          ) : null}
+          
+          <Typography variant="body1" sx={{ mb: 2, color: '#2C3E50' }}>
+            <strong>Summary:</strong> {analysis.summary}
+          </Typography>
+          
+          {analysis.keyInsights.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Key Insights:
+              </Typography>
+              <List dense>
+                {analysis.keyInsights.map((insight, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <TrendingUp fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText primary={insight} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {analysis.trends.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                📈 Trends:
+              </Typography>
+              <List dense>
+                {analysis.trends.map((trend, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Timeline fontSize="small" color="secondary" />
+                    </ListItemIcon>
+                    <ListItemText primary={trend} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {/* Trend Analysis Section */}
+          {analysis.trendAnalysis && analysis.trendAnalysis.trend && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Trend Analysis ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} View):
+              </Typography>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: analysis.trendAnalysis.direction === 'up' ? '#E8F5E8' : 
+                         analysis.trendAnalysis.direction === 'down' ? '#FFEBEE' : '#F5F5F5',
+                borderRadius: 2,
+                border: `1px solid ${analysis.trendAnalysis.direction === 'up' ? '#4CAF50' : 
+                                         analysis.trendAnalysis.direction === 'down' ? '#F44336' : '#9E9E9E'}`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                  {analysis.trendAnalysis.message}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                  Current: {analysis.trendAnalysis.currentCount || 0} | 
+                  Previous: {analysis.trendAnalysis.comparisonCount || 0} | 
+                  Change: {analysis.trendAnalysis.absoluteChange > 0 ? '+' : ''}{analysis.trendAnalysis.absoluteChange || 0}
+                </Typography>
+                {analysis.trendAnalysis.significance === 'high' && (
+                  <Typography variant="body2" sx={{ color: '#E65100', fontWeight: 600, mt: 1 }}>
+                    ⚠️ Significant change detected - requires attention
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {analysis.recommendations.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                💡 Recommendations:
+              </Typography>
+              <List dense>
+                {analysis.recommendations.map((recommendation, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Lightbulb fontSize="small" color="warning" />
+                    </ListItemIcon>
+                    <ListItemText primary={recommendation} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Paper>
+
         {/* Data Visualizations */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6}>
@@ -1537,25 +1932,25 @@ const Reports = () => {
         </Grid>
 
         {/* Monthly Trends */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Monthly Registration Trends
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#34495E' }}>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Month</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Registrations</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Percentage</TableCell>
+                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Month</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Registrations</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Percentage</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {monthlyTrends.map((trend, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>{trend.month}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>{trend.registrations}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>
+                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{trend.month}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>{trend.registrations}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>
                       {totalRegistrations > 0 ? ((trend.registrations / totalRegistrations) * 100).toFixed(1) : 0}%
                     </TableCell>
                   </TableRow>
@@ -1566,25 +1961,25 @@ const Reports = () => {
         </Paper>
 
         {/* Barangay Distribution */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Registration by Barangay
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#34495E' }}>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Barangay</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Registrations</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Percentage</TableCell>
+                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Barangay</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Registrations</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Percentage</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {barangayDistribution.slice(0, 10).map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>{item.barangay}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>{item.count}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>
+                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{item.barangay}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>{item.count}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>
                       {totalRegistrations > 0 ? ((item.count / totalRegistrations) * 100).toFixed(1) : 0}%
                     </TableCell>
                   </TableRow>
@@ -1595,25 +1990,25 @@ const Reports = () => {
         </Paper>
 
         {/* Disability Type Distribution */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Disability Type Distribution
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#34495E' }}>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Disability Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Count</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Percentage</TableCell>
+                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Disability Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Count</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Percentage</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {disabilityTypeDistribution.map((item, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>{item.disability}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>{item.count}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>
+                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>{item.disability}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>{item.count}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>
                       {totalRegistrations > 0 ? ((item.count / totalRegistrations) * 100).toFixed(1) : 0}%
                     </TableCell>
                   </TableRow>
@@ -1624,33 +2019,33 @@ const Reports = () => {
         </Paper>
 
         {/* Recent Registrations */}
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#2C3E50' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: 'white' }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: 'white' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Recent Registrations
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: '#34495E' }}>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>PWD ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Barangay</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Disability Type</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: 'white' }}>Registration Date</TableCell>
+                <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>PWD ID</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Barangay</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Disability Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2C3E50' }}>Registration Date</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {recentRegistrations.map((member, index) => (
                   <TableRow key={index}>
-                    <TableCell sx={{ fontWeight: 500, color: 'white' }}>
+                    <TableCell sx={{ fontWeight: 500, color: '#2C3E50' }}>
                       {member.pwd_id || (member.userID ? `PWD-${member.userID}` : 'Not assigned')}
                     </TableCell>
-                    <TableCell sx={{ color: 'white' }}>
+                    <TableCell sx={{ color: '#2C3E50' }}>
                       {`${member.firstName || ''} ${member.middleName || ''} ${member.lastName || ''}`.trim() || 'Name not provided'}
                     </TableCell>
-                    <TableCell sx={{ color: 'white' }}>{member.barangay || 'Not specified'}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>{member.disabilityType || 'Not specified'}</TableCell>
-                    <TableCell sx={{ color: 'white' }}>
+                    <TableCell sx={{ color: '#2C3E50' }}>{member.barangay || 'Not specified'}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>{member.disabilityType || 'Not specified'}</TableCell>
+                    <TableCell sx={{ color: '#2C3E50' }}>
                       {member.created_at ? new Date(member.created_at).toLocaleDateString() : 'Not available'}
                     </TableCell>
                   </TableRow>
@@ -1668,14 +2063,118 @@ const Reports = () => {
       totalCardsIssued, 
       totalCardsPending, 
       monthlyCardTrends, 
-      barangayCardDistribution, 
-      cardStatusDistribution, 
-      recentCardIssuances, 
-      averageProcessingTime 
+      barangayCardDistribution,
+      cardStatusDistribution,
+      recentCardIssuances,
+      averageProcessingTime
     } = cardDistributionData;
+    const analysis = generateTextualAnalysis(cardDistributionData, 'cards');
     
     return (
       <Box>
+        {/* Textual Analysis Section */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC', border: '1px solid #E8E8E8' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+            📊 Data Analysis & Insights
+          </Typography>
+          
+          {analysis.emptyDataMessage ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {analysis.emptyDataMessage}
+              </Typography>
+            </Alert>
+          ) : null}
+          
+          <Typography variant="body1" sx={{ mb: 2, color: '#2C3E50' }}>
+            <strong>Summary:</strong> {analysis.summary}
+          </Typography>
+          
+          {analysis.keyInsights.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Key Insights:
+              </Typography>
+              <List dense>
+                {analysis.keyInsights.map((insight, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <TrendingUp fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText primary={insight} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {analysis.trends.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                📈 Trends:
+              </Typography>
+              <List dense>
+                {analysis.trends.map((trend, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Timeline fontSize="small" color="secondary" />
+                    </ListItemIcon>
+                    <ListItemText primary={trend} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {/* Trend Analysis Section */}
+          {analysis.trendAnalysis && analysis.trendAnalysis.trend && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Trend Analysis ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} View):
+              </Typography>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: analysis.trendAnalysis.direction === 'up' ? '#E8F5E8' : 
+                         analysis.trendAnalysis.direction === 'down' ? '#FFEBEE' : '#F5F5F5',
+                borderRadius: 2,
+                border: `1px solid ${analysis.trendAnalysis.direction === 'up' ? '#4CAF50' : 
+                                         analysis.trendAnalysis.direction === 'down' ? '#F44336' : '#9E9E9E'}`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                  {analysis.trendAnalysis.message}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                  Current: {analysis.trendAnalysis.currentCount || 0} | 
+                  Previous: {analysis.trendAnalysis.comparisonCount || 0} | 
+                  Change: {analysis.trendAnalysis.absoluteChange > 0 ? '+' : ''}{analysis.trendAnalysis.absoluteChange || 0}
+                </Typography>
+                {analysis.trendAnalysis.significance === 'high' && (
+                  <Typography variant="body2" sx={{ color: '#E65100', fontWeight: 600, mt: 1 }}>
+                    ⚠️ Significant change detected - requires attention
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {analysis.recommendations.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                💡 Recommendations:
+              </Typography>
+              <List dense>
+                {analysis.recommendations.map((recommendation, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Lightbulb fontSize="small" color="warning" />
+                    </ListItemIcon>
+                    <ListItemText primary={recommendation} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Paper>
         {/* Data Visualizations */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6}>
@@ -1773,7 +2272,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Card Status Distribution
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -1815,7 +2314,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Monthly Card Issuance Trends
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -1847,7 +2346,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Card Distribution by Barangay
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -1876,7 +2375,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Recent Card Issuances
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -1922,9 +2421,113 @@ const Reports = () => {
       averageBenefitAmount, 
       totalBenefitValue 
     } = benefitsDistributionData;
+    const analysis = generateTextualAnalysis(benefitsDistributionData, 'benefits');
     
     return (
       <Box>
+        {/* Textual Analysis Section */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC', border: '1px solid #E8E8E8' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+            📊 Data Analysis & Insights
+          </Typography>
+          
+          {analysis.emptyDataMessage ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {analysis.emptyDataMessage}
+              </Typography>
+            </Alert>
+          ) : null}
+          
+          <Typography variant="body1" sx={{ mb: 2, color: '#2C3E50' }}>
+            <strong>Summary:</strong> {analysis.summary}
+          </Typography>
+          
+          {analysis.keyInsights.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Key Insights:
+              </Typography>
+              <List dense>
+                {analysis.keyInsights.map((insight, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <TrendingUp fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText primary={insight} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {analysis.trends.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                📈 Trends:
+              </Typography>
+              <List dense>
+                {analysis.trends.map((trend, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Timeline fontSize="small" color="secondary" />
+                    </ListItemIcon>
+                    <ListItemText primary={trend} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {/* Trend Analysis Section */}
+          {analysis.trendAnalysis && analysis.trendAnalysis.trend && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Trend Analysis ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} View):
+              </Typography>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: analysis.trendAnalysis.direction === 'up' ? '#E8F5E8' : 
+                         analysis.trendAnalysis.direction === 'down' ? '#FFEBEE' : '#F5F5F5',
+                borderRadius: 2,
+                border: `1px solid ${analysis.trendAnalysis.direction === 'up' ? '#4CAF50' : 
+                                         analysis.trendAnalysis.direction === 'down' ? '#F44336' : '#9E9E9E'}`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                  {analysis.trendAnalysis.message}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                  Current: {analysis.trendAnalysis.currentCount || 0} | 
+                  Previous: {analysis.trendAnalysis.comparisonCount || 0} | 
+                  Change: {analysis.trendAnalysis.absoluteChange > 0 ? '+' : ''}{analysis.trendAnalysis.absoluteChange || 0}
+                </Typography>
+                {analysis.trendAnalysis.significance === 'high' && (
+                  <Typography variant="body2" sx={{ color: '#E65100', fontWeight: 600, mt: 1 }}>
+                    ⚠️ Significant change detected - requires attention
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {analysis.recommendations.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                💡 Recommendations:
+              </Typography>
+              <List dense>
+                {analysis.recommendations.map((recommendation, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Lightbulb fontSize="small" color="warning" />
+                    </ListItemIcon>
+                    <ListItemText primary={recommendation} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Paper>
         {/* Data Visualizations */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6}>
@@ -2022,7 +2625,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Benefit Type Distribution
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2064,7 +2667,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Monthly Benefits Distribution Trends
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2096,7 +2699,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Benefits Distribution by Barangay
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2125,7 +2728,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Recent Benefits Distributed
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2180,16 +2783,120 @@ const Reports = () => {
       totalComplaints, 
       resolvedComplaints, 
       pendingComplaints, 
-      monthlyComplaintsTrends, 
-      complaintTypeDistribution, 
-      barangayComplaintsDistribution, 
-      recentComplaints, 
-      averageResolutionTime, 
-      resolutionRate 
+      monthlyComplaintsTrends,
+      complaintTypeDistribution,
+      barangayComplaintsDistribution,
+      recentComplaints,
+      averageResolutionTime,
+      resolutionRate
     } = complaintsAnalysisData;
+    const analysis = generateTextualAnalysis(complaintsAnalysisData, 'complaints');
     
     return (
       <Box>
+        {/* Textual Analysis Section */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC', border: '1px solid #E8E8E8' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+            📊 Data Analysis & Insights
+          </Typography>
+          
+          {analysis.emptyDataMessage ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {analysis.emptyDataMessage}
+              </Typography>
+            </Alert>
+          ) : null}
+          
+          <Typography variant="body1" sx={{ mb: 2, color: '#2C3E50' }}>
+            <strong>Summary:</strong> {analysis.summary}
+          </Typography>
+          
+          {analysis.keyInsights.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Key Insights:
+              </Typography>
+              <List dense>
+                {analysis.keyInsights.map((insight, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <TrendingUp fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText primary={insight} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {analysis.trends.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                📈 Trends:
+              </Typography>
+              <List dense>
+                {analysis.trends.map((trend, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Timeline fontSize="small" color="secondary" />
+                    </ListItemIcon>
+                    <ListItemText primary={trend} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {/* Trend Analysis Section */}
+          {analysis.trendAnalysis && analysis.trendAnalysis.trend && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Trend Analysis ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} View):
+              </Typography>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: analysis.trendAnalysis.direction === 'up' ? '#E8F5E8' : 
+                         analysis.trendAnalysis.direction === 'down' ? '#FFEBEE' : '#F5F5F5',
+                borderRadius: 2,
+                border: `1px solid ${analysis.trendAnalysis.direction === 'up' ? '#4CAF50' : 
+                                         analysis.trendAnalysis.direction === 'down' ? '#F44336' : '#9E9E9E'}`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                  {analysis.trendAnalysis.message}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                  Current: {analysis.trendAnalysis.currentCount || 0} | 
+                  Previous: {analysis.trendAnalysis.comparisonCount || 0} | 
+                  Change: {analysis.trendAnalysis.absoluteChange > 0 ? '+' : ''}{analysis.trendAnalysis.absoluteChange || 0}
+                </Typography>
+                {analysis.trendAnalysis.significance === 'high' && (
+                  <Typography variant="body2" sx={{ color: '#E65100', fontWeight: 600, mt: 1 }}>
+                    ⚠️ Significant change detected - requires attention
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {analysis.recommendations.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                💡 Recommendations:
+              </Typography>
+              <List dense>
+                {analysis.recommendations.map((recommendation, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Lightbulb fontSize="small" color="warning" />
+                    </ListItemIcon>
+                    <ListItemText primary={recommendation} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Paper>
         {/* Data Visualizations */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={6}>
@@ -2287,7 +2994,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Complaint Status Distribution
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2335,7 +3042,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Monthly Complaints Trends
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2367,7 +3074,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Complaint Type Distribution
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2406,7 +3113,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Complaints by Barangay
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2435,7 +3142,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Recent Complaints
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2494,9 +3201,113 @@ const Reports = () => {
       barangayComparison, 
       performanceScore 
     } = barangayPerformanceData;
+    const analysis = generateTextualAnalysis(barangayPerformanceData, 'performance');
     
     return (
       <Box>
+        {/* Textual Analysis Section */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC', border: '1px solid #E8E8E8' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+            📊 Data Analysis & Insights
+          </Typography>
+          
+          {analysis.emptyDataMessage ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {analysis.emptyDataMessage}
+              </Typography>
+            </Alert>
+          ) : null}
+          
+          <Typography variant="body1" sx={{ mb: 2, color: '#2C3E50' }}>
+            <strong>Summary:</strong> {analysis.summary}
+          </Typography>
+          
+          {analysis.keyInsights.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Key Insights:
+              </Typography>
+              <List dense>
+                {analysis.keyInsights.map((insight, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <TrendingUp fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText primary={insight} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {analysis.trends.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                📈 Trends:
+              </Typography>
+              <List dense>
+                {analysis.trends.map((trend, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Timeline fontSize="small" color="secondary" />
+                    </ListItemIcon>
+                    <ListItemText primary={trend} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {/* Trend Analysis Section */}
+          {analysis.trendAnalysis && analysis.trendAnalysis.trend && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Trend Analysis ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} View):
+              </Typography>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: analysis.trendAnalysis.direction === 'up' ? '#E8F5E8' : 
+                         analysis.trendAnalysis.direction === 'down' ? '#FFEBEE' : '#F5F5F5',
+                borderRadius: 2,
+                border: `1px solid ${analysis.trendAnalysis.direction === 'up' ? '#4CAF50' : 
+                                         analysis.trendAnalysis.direction === 'down' ? '#F44336' : '#9E9E9E'}`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                  {analysis.trendAnalysis.message}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                  Current: {analysis.trendAnalysis.currentCount || 0} | 
+                  Previous: {analysis.trendAnalysis.comparisonCount || 0} | 
+                  Change: {analysis.trendAnalysis.absoluteChange > 0 ? '+' : ''}{analysis.trendAnalysis.absoluteChange || 0}
+                </Typography>
+                {analysis.trendAnalysis.significance === 'high' && (
+                  <Typography variant="body2" sx={{ color: '#E65100', fontWeight: 600, mt: 1 }}>
+                    ⚠️ Significant change detected - requires attention
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {analysis.recommendations.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                💡 Recommendations:
+              </Typography>
+              <List dense>
+                {analysis.recommendations.map((recommendation, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Lightbulb fontSize="small" color="warning" />
+                    </ListItemIcon>
+                    <ListItemText primary={recommendation} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Paper>
         {/* Data Visualizations */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12}>
@@ -2594,7 +3405,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Top Performing Barangays
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2636,7 +3447,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Performance Metrics Summary
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2665,7 +3476,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Monthly Performance Trends
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2694,7 +3505,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Barangay Performance Comparison
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2760,9 +3571,113 @@ const Reports = () => {
       challenges,
       recommendations
     } = annualSummaryData;
+    const analysis = generateTextualAnalysis(annualSummaryData, 'annual');
     
     return (
       <Box>
+        {/* Textual Analysis Section */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC', border: '1px solid #E8E8E8' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+            📊 Data Analysis & Insights
+          </Typography>
+          
+          {analysis.emptyDataMessage ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {analysis.emptyDataMessage}
+              </Typography>
+            </Alert>
+          ) : null}
+          
+          <Typography variant="body1" sx={{ mb: 2, color: '#2C3E50' }}>
+            <strong>Summary:</strong> {analysis.summary}
+          </Typography>
+          
+          {analysis.keyInsights.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Key Insights:
+              </Typography>
+              <List dense>
+                {analysis.keyInsights.map((insight, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <TrendingUp fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText primary={insight} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {analysis.trends.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                📈 Trends:
+              </Typography>
+              <List dense>
+                {analysis.trends.map((trend, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Timeline fontSize="small" color="secondary" />
+                    </ListItemIcon>
+                    <ListItemText primary={trend} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+          
+          {/* Trend Analysis Section */}
+          {analysis.trendAnalysis && analysis.trendAnalysis.trend && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                🔍 Trend Analysis ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} View):
+              </Typography>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: analysis.trendAnalysis.direction === 'up' ? '#E8F5E8' : 
+                         analysis.trendAnalysis.direction === 'down' ? '#FFEBEE' : '#F5F5F5',
+                borderRadius: 2,
+                border: `1px solid ${analysis.trendAnalysis.direction === 'up' ? '#4CAF50' : 
+                                         analysis.trendAnalysis.direction === 'down' ? '#F44336' : '#9E9E9E'}`
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                  {analysis.trendAnalysis.message}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#7F8C8D' }}>
+                  Current: {analysis.trendAnalysis.currentCount || 0} | 
+                  Previous: {analysis.trendAnalysis.comparisonCount || 0} | 
+                  Change: {analysis.trendAnalysis.absoluteChange > 0 ? '+' : ''}{analysis.trendAnalysis.absoluteChange || 0}
+                </Typography>
+                {analysis.trendAnalysis.significance === 'high' && (
+                  <Typography variant="body2" sx={{ color: '#E65100', fontWeight: 600, mt: 1 }}>
+                    ⚠️ Significant change detected - requires attention
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+          
+          {analysis.recommendations.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#2C3E50', mb: 1 }}>
+                💡 Recommendations:
+              </Typography>
+              <List dense>
+                {analysis.recommendations.map((recommendation, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Lightbulb fontSize="small" color="warning" />
+                    </ListItemIcon>
+                    <ListItemText primary={recommendation} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+        </Paper>
         {/* Data Visualizations */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12}>
@@ -2904,7 +3819,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Quarterly Performance Summary
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -2948,7 +3863,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Monthly Activity Trends
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -3030,7 +3945,7 @@ const Reports = () => {
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#2C3E50' }}>
             Top Performing Barangays ({year})
           </Typography>
-          <TableContainer>
+          <TableContainer sx={{ bgcolor: 'white', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#F8FAFC' }}>
@@ -4005,6 +4920,7 @@ const Reports = () => {
             </Box>
           </Box>
 
+
           <Grid container spacing={4} sx={{ mb: 5, mt: 2 }}>
             {reports.map((report) => (
               <Grid item xs={12} sm={6} md={4} key={report.id}>
@@ -4190,6 +5106,103 @@ const Reports = () => {
                 <Typography variant="body1" sx={{ mb: 3 }}>
                   {selectedReportData.description}
                 </Typography>
+                
+                {/* Data Visualization Filters */}
+                <Paper sx={{ 
+                  p: 3, 
+                  mb: 3, 
+                  borderRadius: 2, 
+                  bgcolor: '#F8FAFC', 
+                  border: '1px solid #E8E8E8' 
+                }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50', mb: 2 }}>
+                    📊 Data Visualization Filters
+                  </Typography>
+                  
+                  <Grid container spacing={3} alignItems="center">
+                    <Grid item xs={12} sm={6} md={3}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel sx={{ color: '#7F8C8D' }}>Time Period</InputLabel>
+                        <Select
+                          value={timeFilter}
+                          label="Time Period"
+                          onChange={(e) => setTimeFilter(e.target.value)}
+                          sx={{
+                            bgcolor: 'white',
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': { borderColor: '#E0E0E0' },
+                              '&:hover fieldset': { borderColor: '#BDC3C7' },
+                              '&.Mui-focused fieldset': { borderColor: '#3498DB' },
+                            },
+                            '& .MuiSelect-select': { color: '#2C3E50' }
+                          }}
+                        >
+                          <MenuItem value="daily">Daily</MenuItem>
+                          <MenuItem value="weekly">Weekly</MenuItem>
+                          <MenuItem value="monthly">Monthly</MenuItem>
+                          <MenuItem value="annually">Annually</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={3}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel sx={{ color: '#7F8C8D' }}>Compare With</InputLabel>
+                        <Select
+                          value={comparisonPeriod}
+                          label="Compare With"
+                          onChange={(e) => setComparisonPeriod(e.target.value)}
+                          sx={{
+                            bgcolor: 'white',
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': { borderColor: '#E0E0E0' },
+                              '&:hover fieldset': { borderColor: '#BDC3C7' },
+                              '&.Mui-focused fieldset': { borderColor: '#3498DB' },
+                            },
+                            '& .MuiSelect-select': { color: '#2C3E50' }
+                          }}
+                        >
+                          <MenuItem value="previous">Previous Period</MenuItem>
+                          <MenuItem value="same_period_last_year">Same Period Last Year</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box sx={{ 
+                        p: 2, 
+                        bgcolor: 'white', 
+                        borderRadius: 2, 
+                        border: '1px solid #E0E0E0',
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="subtitle2" sx={{ color: '#7F8C8D', mb: 1 }}>
+                          Current Filter
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                          {timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} vs {comparisonPeriod === 'previous' ? 'Previous' : 'Last Year'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box sx={{ 
+                        p: 2, 
+                        bgcolor: 'white', 
+                        borderRadius: 2, 
+                        border: '1px solid #E0E0E0',
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="subtitle2" sx={{ color: '#7F8C8D', mb: 1 }}>
+                          Trend Analysis
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                          {trendAnalysis.trend ? `${trendAnalysis.trend.charAt(0).toUpperCase() + trendAnalysis.trend.slice(1)}` : 'Loading...'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Paper>
                 {selectedReportData.reportType === 'registration' ? (
                   renderPWDRegistrationReport()
                 ) : selectedReportData.reportType === 'cards' ? (
@@ -4545,3 +5558,4 @@ const Reports = () => {
 };
 
 export default Reports;
+

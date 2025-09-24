@@ -37,31 +37,30 @@ const AgeGroupChart = ({ data }) => {
     );
   }
 
-  // Sample age group data based on your PWD records
-  const ageGroupData = [
-    { group: 'Under 18', count: 2 },
-    { group: '18-35', count: 3 },
-    { group: '36-55', count: 2 },
-    { group: 'Over 55', count: 1 },
-  ];
-
+  // Use the actual data passed to the component
   const chartData = {
-    labels: ageGroupData.map(item => item.group),
+    labels: data.map(item => item.ageGroup || item.group),
     datasets: [
       {
         label: 'Number of PWD Members',
-        data: ageGroupData.map(item => item.count),
+        data: data.map(item => item.count || 0),
         backgroundColor: [
           'rgba(255, 99, 132, 0.8)',
           'rgba(54, 162, 235, 0.8)',
           'rgba(255, 205, 86, 0.8)',
           'rgba(75, 192, 192, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+          'rgba(255, 159, 64, 0.8)',
+          'rgba(199, 199, 199, 0.8)',
         ],
         borderColor: [
           'rgba(255, 99, 132, 1)',
           'rgba(54, 162, 235, 1)',
           'rgba(255, 205, 86, 1)',
           'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 159, 64, 1)',
+          'rgba(199, 199, 199, 1)',
         ],
         borderWidth: 2,
       },
@@ -78,9 +77,10 @@ const AgeGroupChart = ({ data }) => {
       tooltip: {
         callbacks: {
           label: function(context) {
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((context.parsed / total) * 100).toFixed(1);
-            return `${context.label}: ${context.parsed} (${percentage}%)`;
+            const total = context.dataset.data.reduce((a, b) => a + (b || 0), 0);
+            const value = context.parsed.y || 0;
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+            return `${context.label}: ${value} (${percentage}%)`;
           },
         },
       },

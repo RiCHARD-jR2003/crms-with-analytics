@@ -51,12 +51,14 @@ import {
   Email as EmailIcon,
   Home as HomeIcon,
   OpenInNew,
+  Lightbulb as LightbulbIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminSidebar from '../shared/AdminSidebar';
 import MobileHeader from '../shared/MobileHeader';
-import FreeGoogleMapsComponent from '../shared/FreeGoogleMapsComponent';
+import RealGoogleMapsComponent from '../shared/RealGoogleMapsComponent';
+import ErrorBoundary from '../shared/ErrorBoundary';
 import dashboardService from '../../services/dashboardService';
 import { api } from '../../services/api';
 import { 
@@ -254,8 +256,8 @@ function AdminDashboard() {
             Laguna, Philippines
           </Typography>
           
-          {/* Free Google Maps Component (No API Key Required) */}
-          <FreeGoogleMapsComponent 
+          {/* Real Google Maps Component */}
+          <RealGoogleMapsComponent 
             onBarangaySelect={handleBarangaySelect}
             height="calc(100% - 80px)"
           />
@@ -299,7 +301,7 @@ function AdminDashboard() {
       { month: 'DEC', registered: 0, pending: 0 }
     ];
 
-    const maxValue = Math.max(...monthlyData.map(d => d.registered + d.pending));
+    const maxValue = Math.max(...monthlyData.map(d => d.registered + d.pending), 1); // Ensure maxValue is at least 1 to avoid division by zero
     const chartHeight = 180;
     const chartWidth = 400;
 
@@ -352,7 +354,7 @@ function AdminDashboard() {
               <polyline
                 points={monthlyData.map((data, index) => {
                   const x = 40 + (index * (chartWidth - 60) / 11);
-                  const y = chartHeight - 20 - ((data.registered / maxValue) * (chartHeight - 40));
+                  const y = chartHeight - 20 - ((data.registered || 0) / maxValue) * (chartHeight - 40);
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
@@ -366,7 +368,7 @@ function AdminDashboard() {
               <polyline
                 points={monthlyData.map((data, index) => {
                   const x = 40 + (index * (chartWidth - 60) / 11);
-                  const y = chartHeight - 20 - ((data.pending / maxValue) * (chartHeight - 40));
+                  const y = chartHeight - 20 - ((data.pending || 0) / maxValue) * (chartHeight - 40);
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
@@ -379,7 +381,7 @@ function AdminDashboard() {
               {/* Data points for Registered */}
               {monthlyData.map((data, index) => {
                 const x = 40 + (index * (chartWidth - 60) / 11);
-                const y = chartHeight - 20 - ((data.registered / maxValue) * (chartHeight - 40));
+                const y = chartHeight - 20 - (((data.registered || 0) / maxValue) * (chartHeight - 40));
                 return (
                   <circle
                     key={`registered-${index}`}
@@ -396,7 +398,7 @@ function AdminDashboard() {
               {/* Data points for Pending */}
               {monthlyData.map((data, index) => {
                 const x = 40 + (index * (chartWidth - 60) / 11);
-                const y = chartHeight - 20 - ((data.pending / maxValue) * (chartHeight - 40));
+                const y = chartHeight - 20 - (((data.pending || 0) / maxValue) * (chartHeight - 40));
                 return (
                   <circle
                     key={`pending-${index}`}
@@ -800,7 +802,7 @@ function AdminDashboard() {
                 <TableContainer>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: '#F8F9FA' }}>
+                      <TableRow sx={{ backgroundColor: '#FFFFFF' }}>
                         <TableCell sx={{ fontWeight: 600, color: '#000000', fontSize: '0.75rem' }}>Barangay</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: '#000000', fontSize: '0.75rem' }}>President</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: '#000000', fontSize: '0.75rem' }}>Contact</TableCell>
@@ -888,15 +890,16 @@ function AdminDashboard() {
   console.log('Current stats state:', stats);
   
   return (
-    <Box sx={mainContainerStyles}>
-      {/* Mobile Header */}
-      <MobileHeader 
-        onMenuToggle={handleMobileMenuToggle}
-        isMenuOpen={isMobileMenuOpen}
-      />
-      
-      {/* Admin Sidebar with Toggle */}
-      <AdminSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
+    <ErrorBoundary>
+      <Box sx={mainContainerStyles}>
+        {/* Mobile Header */}
+        <MobileHeader 
+          onMenuToggle={handleMobileMenuToggle}
+          isMenuOpen={isMobileMenuOpen}
+        />
+        
+        {/* Admin Sidebar with Toggle */}
+        <AdminSidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle} />
 
       {/* Main Content */}
       <Box
@@ -915,17 +918,40 @@ function AdminDashboard() {
 
           {/* Page Header */}
           <Box sx={{ mb: { xs: 2, md: 4 } }}>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 'bold', 
-                color: '#000000', 
-                mb: 1,
-                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-              }}
-            >
-              Dashboard
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#000000', 
+                  fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+                }}
+              >
+                Dashboard
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<LightbulbIcon />}
+                onClick={() => navigate('/reports')}
+                sx={{
+                  bgcolor: '#9B59B6',
+                  color: 'white',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  '&:hover': {
+                    bgcolor: '#8E44AD',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(155, 89, 182, 0.3)'
+                  },
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                AI Suggestions
+              </Button>
+            </Box>
             <Typography 
               variant="body1" 
               sx={{ 
@@ -942,6 +968,7 @@ function AdminDashboard() {
         </Container>
       </Box>
     </Box>
+    </ErrorBoundary>
   );
 }
 

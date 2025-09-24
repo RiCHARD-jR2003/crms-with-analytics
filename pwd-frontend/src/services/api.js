@@ -34,12 +34,18 @@ async function request(path, { method = 'GET', headers = {}, body, auth = true }
 
   try {
     console.log(`Making request to: ${API_BASE_URL}${path}`);
+    console.log('Request details:', { method, headers: finalHeaders, body: body ? JSON.stringify(body) : undefined });
     
     const res = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers: finalHeaders,
       body: usingFormData ? body : body ? JSON.stringify(body) : undefined,
+      mode: 'cors', // Explicitly set CORS mode
+      credentials: 'omit', // Don't send credentials for CORS
     });
+
+    console.log(`Response status: ${res.status} ${res.statusText}`);
+    console.log(`Response headers:`, Object.fromEntries(res.headers.entries()));
 
     const text = await res.text();
     let data;
@@ -57,6 +63,13 @@ async function request(path, { method = 'GET', headers = {}, body, auth = true }
     
   } catch (error) {
     console.error(`Failed with URL ${API_BASE_URL}${path}:`, error.message);
+    console.error('Full error object:', error);
+    
+    // Provide more specific error messages for common issues
+    if (error.message === 'Failed to fetch') {
+      throw new Error('Network error: Unable to connect to the server. Please check if the backend server is running on http://127.0.0.1:8000');
+    }
+    
     throw error;
   }
 }

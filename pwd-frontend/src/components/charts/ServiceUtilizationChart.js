@@ -12,7 +12,7 @@ import { Box, Typography } from '@mui/material';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ServiceUtilizationChart = ({ data }) => {
-  if (!data || data.length === 0) {
+  if (!data || !data.totalRegistrations) {
     return (
       <ChartContainer 
         title="Service Utilization" 
@@ -20,37 +20,62 @@ const ServiceUtilizationChart = ({ data }) => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
           <Typography variant="body1" color="text.secondary">
-            No data available
+            No service data available
           </Typography>
         </Box>
       </ChartContainer>
     );
   }
 
-  // Service utilization data based on your actual data
+  // Calculate service utilization based on actual data
+  const totalMembers = data.totalRegistrations || 0;
+  const cardsIssued = data.totalCardsIssued || 0;
+  const benefitsDistributed = data.totalBenefitsDistributed || 0;
+  const complaintsReceived = data.totalComplaints || 0;
+
   const serviceData = [
-    { service: 'PWD Registration', utilized: 8, total: 8 },
-    { service: 'ID Card Issuance', utilized: 8, total: 8 },
-    { service: 'Benefit Claims', utilized: 0, total: 8 },
-    { service: 'Complaint System', utilized: 0, total: 8 },
+    { 
+      service: 'PWD Registration', 
+      utilized: totalMembers, 
+      total: totalMembers,
+      percentage: totalMembers > 0 ? 100 : 0
+    },
+    { 
+      service: 'ID Card Issuance', 
+      utilized: cardsIssued, 
+      total: totalMembers,
+      percentage: totalMembers > 0 ? Math.round((cardsIssued / totalMembers) * 100) : 0
+    },
+    { 
+      service: 'Benefit Claims', 
+      utilized: benefitsDistributed, 
+      total: totalMembers,
+      percentage: totalMembers > 0 ? Math.round((benefitsDistributed / totalMembers) * 100) : 0
+    },
+    { 
+      service: 'Complaint System', 
+      utilized: complaintsReceived, 
+      total: totalMembers,
+      percentage: totalMembers > 0 ? Math.round((complaintsReceived / totalMembers) * 100) : 0
+    },
   ];
 
   const chartData = {
     labels: serviceData.map(item => item.service),
     datasets: [
       {
-        data: serviceData.map(item => item.utilized),
+        data: serviceData.map(item => item.percentage),
         backgroundColor: [
-          'rgba(75, 192, 192, 0.8)',  // Registration - Good
-          'rgba(75, 192, 192, 0.8)',  // ID Cards - Good
-          'rgba(255, 99, 132, 0.8)',  // Benefits - Critical
-          'rgba(255, 99, 132, 0.8)',  // Complaints - Critical
+          'rgba(75, 192, 192, 0.8)',  // Registration - Always good
+          cardsIssued > 0 ? 'rgba(75, 192, 192, 0.8)' : 'rgba(255, 99, 132, 0.8)',  // ID Cards
+          benefitsDistributed > 0 ? 'rgba(75, 192, 192, 0.8)' : 'rgba(255, 99, 132, 0.8)',  // Benefits
+          complaintsReceived > 0 ? 'rgba(255, 99, 132, 0.8)' : 'rgba(54, 162, 235, 0.8)',  // Complaints
         ],
         borderColor: [
           'rgba(75, 192, 192, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 99, 132, 1)',
-          'rgba(255, 99, 132, 1)',
+          cardsIssued > 0 ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)',
+          benefitsDistributed > 0 ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)',
+          complaintsReceived > 0 ? 'rgba(255, 99, 132, 1)' : 'rgba(54, 162, 235, 1)',
         ],
         borderWidth: 2,
       },
@@ -73,17 +98,17 @@ const ServiceUtilizationChart = ({ data }) => {
           generateLabels: function(chart) {
             const data = chart.data;
             if (data.labels.length && data.datasets.length) {
-              return data.labels.map((label, i) => {
+              return data.labels.map((label, index) => {
                 const dataset = data.datasets[0];
-                const value = dataset.data[i];
-                const total = serviceData[i].total;
-                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                const value = dataset.data[index];
+                const service = serviceData[index];
                 return {
-                  text: `${label}: ${value}/${total} (${percentage}%)`,
-                  fillStyle: dataset.backgroundColor[i],
-                  strokeStyle: dataset.borderColor[i],
+                  text: `${label}: ${service.utilized}/${service.total} (${value}%)`,
+                  fillStyle: dataset.backgroundColor[index],
+                  strokeStyle: dataset.borderColor[index],
                   lineWidth: dataset.borderWidth,
-                  pointStyle: 'circle',
+                  hidden: false,
+                  index: index
                 };
               });
             }
@@ -94,9 +119,11 @@ const ServiceUtilizationChart = ({ data }) => {
       tooltip: {
         callbacks: {
           label: function(context) {
-            const total = serviceData[context.dataIndex].total;
-            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-            return `${context.label}: ${context.parsed}/${total} (${percentage}%)`;
+            const service = serviceData[context.dataIndex];
+            const percentage = service.percentage;
+            const utilized = service.utilized;
+            const total = service.total;
+            return `${context.label}: ${utilized}/${total} (${percentage}%)`;
           },
         },
       },

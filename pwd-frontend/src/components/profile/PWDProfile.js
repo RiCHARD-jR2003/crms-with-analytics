@@ -479,6 +479,7 @@ function PWDProfile() {
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <TextField
+                        autoFocus={false}
                         fullWidth
                         label="First Name"
                         name="firstName"
@@ -499,6 +500,7 @@ function PWDProfile() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
+                        autoFocus={false}
                         fullWidth
                         label="Last Name"
                         name="lastName"
@@ -519,6 +521,7 @@ function PWDProfile() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
+                        autoFocus={false}
                         fullWidth
                         label="Email"
                         name="email"
@@ -540,6 +543,7 @@ function PWDProfile() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
+                        autoFocus={false}
                         fullWidth
                         label="Contact Number"
                         name="contactNumber"
@@ -560,6 +564,7 @@ function PWDProfile() {
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
+                        autoFocus={false}
                         fullWidth
                         label="Address"
                         name="address"
@@ -582,6 +587,7 @@ function PWDProfile() {
                     </Grid>
                     <Grid item xs={12} md={4}>
                       <TextField
+                        autoFocus={false}
                         fullWidth
                         label="Birth Date"
                         name="birthDate"
@@ -609,6 +615,7 @@ function PWDProfile() {
                           name="gender"
                           value={formData.gender}
                           onChange={handleInputChange}
+                          autoFocus={false}
                           sx={{
                             bgcolor: '#34495E',
                             color: '#FFFFFF',
@@ -629,6 +636,7 @@ function PWDProfile() {
                           name="disabilityType"
                           value={formData.disabilityType}
                           onChange={handleInputChange}
+                          autoFocus={false}
                           sx={{
                             bgcolor: '#34495E',
                             color: '#FFFFFF',
@@ -1216,6 +1224,7 @@ function PWDProfile() {
                 type="password"
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                autoFocus={false}
                 margin="normal"
                 sx={{
                   '& .MuiOutlinedInput-root': {
@@ -1248,6 +1257,7 @@ function PWDProfile() {
                 type="password"
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                autoFocus={false}
                 margin="normal"
                 helperText="Password must be at least 6 characters long"
                 sx={{
@@ -1284,6 +1294,7 @@ function PWDProfile() {
                 type="password"
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                autoFocus={false}
                 margin="normal"
                 sx={{
                   '& .MuiOutlinedInput-root': {

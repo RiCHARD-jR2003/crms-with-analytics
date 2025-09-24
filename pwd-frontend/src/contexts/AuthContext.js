@@ -33,9 +33,10 @@ export function AuthProvider({ children }) {
 
   const login = async ({ username, password }) => {
     console.log('Attempting login with:', { username, password });
-    const response = await api.post('/login', { username, password }, { auth: false });
-    console.log('Login response:', response);
-    const { user, access_token: accessToken } = response;
+    try {
+      const response = await api.post('/login', { username, password }, { auth: false });
+      console.log('Login response:', response);
+      const { user, access_token: accessToken } = response;
     
     console.log('User data:', user);
     console.log('User role:', user.role);
@@ -60,12 +61,28 @@ export function AuthProvider({ children }) {
       }
     }
     
-    setCurrentUser(user);
-    localStorage.setItem('auth.currentUser', JSON.stringify(user));
-    localStorage.setItem('auth.token', JSON.stringify(accessToken));
-    await api.setToken(accessToken);
-    console.log('Login successful, user set:', user);
-    return user;
+      setCurrentUser(user);
+      localStorage.setItem('auth.currentUser', JSON.stringify(user));
+      localStorage.setItem('auth.token', JSON.stringify(accessToken));
+      await api.setToken(accessToken);
+      console.log('Login successful, user set:', user);
+      return user;
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      // Provide more specific error messages
+      if (error.message.includes('Network error')) {
+        throw new Error('Cannot connect to the server. Please ensure the backend server is running on http://127.0.0.1:8000');
+      } else if (error.status === 401) {
+        throw new Error('Invalid username or password. Please check your credentials.');
+      } else if (error.status === 403) {
+        throw new Error('Your account is inactive. Please contact the administrator.');
+      } else if (error.status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      } else {
+        throw new Error(error.message || 'Login failed. Please try again.');
+      }
+    }
   };
 
   const register = async (payload) => {

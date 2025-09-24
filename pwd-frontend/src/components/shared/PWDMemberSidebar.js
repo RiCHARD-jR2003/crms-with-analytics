@@ -51,15 +51,17 @@ function PWDMemberSidebar({ isOpen, onToggle }) {
     <Box sx={{
       width: 280,
       height: '100%',
-      bgcolor: '#2C3E50',
+      bgcolor: '#FFFFFF',
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
+      borderRight: '1px solid #E0E0E0'
     }}>
       {/* Header */}
       <Box sx={{ 
         p: { xs: 2, sm: 3 }, 
-        borderBottom: '1px solid #34495E',
+        borderBottom: '1px solid #E0E0E0',
         display: 'flex',
         alignItems: 'center',
         gap: 2
@@ -67,29 +69,29 @@ function PWDMemberSidebar({ isOpen, onToggle }) {
         <Box sx={{
           width: 40,
           height: 40,
-          bgcolor: '#2E86C1',
+          bgcolor: '#E0E0E0',
           borderRadius: 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
+          color: '#000000',
           fontWeight: 'bold',
           fontSize: '1.2rem'
         }}>
           PDAO
         </Box>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold', fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+          <Typography variant="h6" sx={{ color: '#000000', fontWeight: 'bold', fontSize: { xs: '0.9rem', sm: '1rem' } }}>
             CABUYAO PDAO RMS
           </Typography>
-          <Typography variant="body2" sx={{ color: '#BDC3C7', fontSize: { xs: '0.7rem', sm: '0.8rem' } }}>
+          <Typography variant="body2" sx={{ color: '#000000', fontSize: { xs: '0.7rem', sm: '0.8rem' } }}>
             PWD Member Portal
           </Typography>
         </Box>
         {isMobile && (
           <IconButton
             onClick={handleDrawerToggle}
-            sx={{ color: 'white', p: 0.5 }}
+            sx={{ color: '#000000', p: 0.5 }}
           >
             <CloseIcon />
           </IconButton>
@@ -97,22 +99,22 @@ function PWDMemberSidebar({ isOpen, onToggle }) {
       </Box>
 
       {/* User Info */}
-      <Box sx={{ p: { xs: 1.5, sm: 2 }, borderBottom: '1px solid #34495E' }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 }, borderBottom: '1px solid #E0E0E0' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{
             width: 32,
             height: 32,
-            bgcolor: '#2E86C1',
+            bgcolor: '#E0E0E0',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: '#000000',
             fontSize: '0.9rem'
           }}>
             <PersonIcon sx={{ fontSize: 20 }} />
           </Box>
-          <Typography variant="body2" sx={{ color: '#BDC3C7', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+          <Typography variant="body2" sx={{ color: '#000000', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
             Hello PWD Member
           </Typography>
         </Box>
@@ -136,7 +138,7 @@ function PWDMemberSidebar({ isOpen, onToggle }) {
                   px: 2,
                   bgcolor: location.pathname === item.path ? '#34495E' : 'transparent',
                   '&:hover': {
-                    bgcolor: '#34495E',
+                    bgcolor: '#F5F5F5',
                   },
                   minHeight: { xs: 48, sm: 56 }
                 }}
@@ -164,29 +166,29 @@ function PWDMemberSidebar({ isOpen, onToggle }) {
       </Box>
 
       {/* Logout Section */}
-      <Box sx={{ p: 2, borderTop: '1px solid #34495E' }}>
-        <Divider sx={{ mb: 2, bgcolor: '#34495E' }} />
+      <Box sx={{ p: 2, borderTop: '1px solid #E0E0E0' }}>
+        <Divider sx={{ mb: 2, bgcolor: '#F5F5F5' }} />
         <ListItemButton
           onClick={handleLogout}
           sx={{
             borderRadius: 1,
             py: { xs: 1, sm: 1.5 },
             px: 2,
-            bgcolor: 'transparent',
+            bgcolor: '#F5F5F5',
             '&:hover': {
-              bgcolor: '#E74C3C',
+              bgcolor: '#FF6B6B',
             },
             minHeight: { xs: 48, sm: 56 }
           }}
         >
-          <ListItemIcon sx={{ color: '#E74C3C', minWidth: { xs: 40, sm: 48 } }}>
+          <ListItemIcon sx={{ color: '#FF6B6B', minWidth: { xs: 40, sm: 48 } }}>
             <LogoutIcon />
           </ListItemIcon>
           <ListItemText 
             primary="Logout"
             sx={{
               '& .MuiListItemText-primary': {
-                color: '#E74C3C',
+                color: '#FF6B6B',
                 fontSize: { xs: '0.9rem', sm: '1rem' },
                 fontWeight: 500
               }
@@ -225,7 +227,7 @@ function PWDMemberSidebar({ isOpen, onToggle }) {
     <Box sx={{
       width: 280,
       height: '100vh',
-      bgcolor: '#2C3E50',
+      bgcolor: '#FFFFFF',
       position: 'fixed',
       left: 0,
       top: 0,
