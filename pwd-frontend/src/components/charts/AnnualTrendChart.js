@@ -83,6 +83,9 @@ const AnnualTrendChart = ({ data }) => {
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          color: 'white',
+        },
       },
       tooltip: {
         mode: 'index',
@@ -94,12 +97,16 @@ const AnnualTrendChart = ({ data }) => {
         beginAtZero: true,
         ticks: {
           stepSize: 1,
+          color: 'white',
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.1)',
         },
       },
       x: {
+        ticks: {
+          color: 'white',
+        },
         grid: {
           display: false,
         },

@@ -65,6 +65,7 @@ const DisabilityTypeChart = ({ data }) => {
         labels: {
           padding: 20,
           usePointStyle: true,
+          color: 'white',
         },
       },
       tooltip: {

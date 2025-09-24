@@ -94,12 +94,16 @@ const MonthlyTrendChart = ({ data }) => {
         beginAtZero: true,
         ticks: {
           stepSize: 1,
+          color: 'white',
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.1)',
         },
       },
       x: {
+        ticks: {
+          color: 'white',
+        },
         grid: {
           display: false,
         },

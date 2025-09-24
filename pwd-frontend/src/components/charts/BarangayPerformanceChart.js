@@ -73,6 +73,9 @@ const BarangayPerformanceChart = ({ data }) => {
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          color: 'white',
+        },
       },
       title: {
         display: false,
@@ -83,12 +86,20 @@ const BarangayPerformanceChart = ({ data }) => {
         beginAtZero: true,
         ticks: {
           stepSize: 1,
+          color: 'white',
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)',
         },
       },
       x: {
         ticks: {
           maxRotation: 45,
           minRotation: 0,
+          color: 'white',
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)',
         },
       },
     },
