@@ -96,6 +96,11 @@ const AdminSupportDesk = () => {
     setSelectedFile(null); // Clear selected file when closing dialog
   };
 
+  const handleReplyTicket = (ticket) => {
+    setSelectedTicket(ticket);
+    setViewDialog(true);
+  };
+
   const handleSubmitReply = async () => {
     if (replyText.trim()) {
       try {
