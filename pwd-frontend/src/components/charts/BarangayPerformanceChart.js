@@ -75,6 +75,9 @@ const BarangayPerformanceChart = ({ data }) => {
         position: 'top',
         labels: {
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
       },
       title: {
@@ -87,6 +90,9 @@ const BarangayPerformanceChart = ({ data }) => {
         ticks: {
           stepSize: 1,
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
@@ -97,6 +103,9 @@ const BarangayPerformanceChart = ({ data }) => {
           maxRotation: 45,
           minRotation: 0,
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',

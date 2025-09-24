@@ -91,6 +91,9 @@ const AgeGroupChart = ({ data }) => {
         ticks: {
           stepSize: 1,
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
@@ -99,6 +102,9 @@ const AgeGroupChart = ({ data }) => {
       x: {
         ticks: {
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',

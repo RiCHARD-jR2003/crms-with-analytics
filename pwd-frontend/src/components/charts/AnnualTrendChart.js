@@ -85,6 +85,9 @@ const AnnualTrendChart = ({ data }) => {
         position: 'top',
         labels: {
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
       },
       tooltip: {
@@ -98,6 +101,9 @@ const AnnualTrendChart = ({ data }) => {
         ticks: {
           stepSize: 1,
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(0, 0, 0, 0.1)',
@@ -106,6 +112,9 @@ const AnnualTrendChart = ({ data }) => {
       x: {
         ticks: {
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           display: false,

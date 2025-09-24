@@ -89,6 +89,9 @@ const ComplaintStatusChart = ({ data }) => {
         ticks: {
           stepSize: 1,
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
@@ -97,6 +100,9 @@ const ComplaintStatusChart = ({ data }) => {
       x: {
         ticks: {
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',

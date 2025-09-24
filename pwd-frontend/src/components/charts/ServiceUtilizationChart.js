@@ -67,6 +67,9 @@ const ServiceUtilizationChart = ({ data }) => {
           padding: 20,
           usePointStyle: true,
           color: 'white',
+          font: {
+            color: 'white'
+          },
           generateLabels: function(chart) {
             const data = chart.data;
             if (data.labels.length && data.datasets.length) {

@@ -66,6 +66,9 @@ const BenefitTypeChart = ({ data }) => {
           padding: 20,
           usePointStyle: true,
           color: 'white',
+          font: {
+            color: 'white'
+          }
         },
       },
       tooltip: {
