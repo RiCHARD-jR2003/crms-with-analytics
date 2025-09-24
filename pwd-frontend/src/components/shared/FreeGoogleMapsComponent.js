@@ -35,7 +35,7 @@ const BARANGAYS = [
 
 const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
   const [selectedBarangay, setSelectedBarangay] = useState(null);
-  const [mapType, setMapType] = useState('google'); // 'google' or 'openstreet'
+  const [mapType, setMapType] = useState('openstreet'); // 'google' or 'openstreet'
 
   const handleBarangayClick = (barangay) => {
     console.log('🗺️ Barangay clicked:', barangay.name);
@@ -58,8 +58,8 @@ const FreeGoogleMapsComponent = ({ onBarangaySelect, height = '400px' }) => {
     window.open(url, '_blank');
   };
 
-  // Google Maps Embed URL (no API key required)
-  const googleMapsEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dOWWgGjqJjJjJj&q=${encodeURIComponent(PWD_OFFICE_LOCATION.address)}&zoom=13`;
+  // Google Maps Embed URL (no API key required - using public embed)
+  const googleMapsEmbedUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12345!2d121.123456!3d14.123456!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDA3JzI0LjQiTiAxMjHCsDA3JzI0LjQiRQ!5e0!3m2!1sen!2sph!4v1234567890123!5m2!1sen!2sph`;
 
   // OpenStreetMap URL
   const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${PWD_OFFICE_LOCATION.lng - 0.01},${PWD_OFFICE_LOCATION.lat - 0.01},${PWD_OFFICE_LOCATION.lng + 0.01},${PWD_OFFICE_LOCATION.lat + 0.01}&layer=mapnik&marker=${PWD_OFFICE_LOCATION.lat},${PWD_OFFICE_LOCATION.lng}`;
