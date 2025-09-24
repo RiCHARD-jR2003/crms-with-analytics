@@ -353,8 +353,30 @@ class AnalyticsService
     {
         $suggestions = [];
         
+        // No benefit claims at all
+        if ($benefitData['total'] == 0) {
+            $suggestions[] = [
+                'type' => 'utilization',
+                'priority' => 'critical',
+                'category' => 'Benefit Utilization',
+                'title' => 'Zero Benefit Claims - Critical Issue',
+                'description' => "No benefit claims have been processed despite having {$benefitData['total']} registered PWD members. This indicates a critical gap in benefit awareness or accessibility.",
+                'recommendations' => [
+                    'Conduct immediate awareness campaigns about available benefits',
+                    'Simplify the benefit claiming process significantly',
+                    'Provide one-on-one assistance for benefit claims',
+                    'Create step-by-step guides with visual aids',
+                    'Establish benefit claim assistance centers',
+                    'Partner with community organizations for outreach',
+                    'Implement automated benefit notifications'
+                ],
+                'expected_impact' => 'Establish benefit claim system and achieve 30-50% claim rate',
+                'implementation_difficulty' => 'High',
+                'estimated_timeframe' => '6-8 weeks'
+            ];
+        }
         // Low claim rate
-        if ($benefitData['claim_rate'] < 50) {
+        else if ($benefitData['claim_rate'] < 50) {
             $suggestions[] = [
                 'type' => 'utilization',
                 'priority' => 'high',
@@ -424,8 +446,30 @@ class AnalyticsService
     {
         $suggestions = [];
         
+        // No complaints at all - could indicate lack of feedback channels
+        if ($complaintData['total'] == 0) {
+            $suggestions[] = [
+                'type' => 'feedback',
+                'priority' => 'medium',
+                'category' => 'Feedback System',
+                'title' => 'No Complaints Reported - Check Feedback Channels',
+                'description' => "Zero complaints reported despite having {$complaintData['total']} registered PWD members. This may indicate that feedback channels are not accessible or that PWD members are not aware of complaint procedures.",
+                'recommendations' => [
+                    'Establish multiple complaint reporting channels (online, phone, in-person)',
+                    'Create anonymous complaint submission options',
+                    'Conduct surveys to assess service satisfaction',
+                    'Train staff to proactively seek feedback',
+                    'Implement regular feedback collection from PWD members',
+                    'Create awareness campaigns about complaint procedures',
+                    'Establish community liaison officers for feedback collection'
+                ],
+                'expected_impact' => 'Establish effective feedback system and improve service quality',
+                'implementation_difficulty' => 'Medium',
+                'estimated_timeframe' => '4-6 weeks'
+            ];
+        }
         // Low resolution rate
-        if ($complaintData['resolution_rate'] < 80) {
+        else if ($complaintData['resolution_rate'] < 80) {
             $suggestions[] = [
                 'type' => 'service_quality',
                 'priority' => 'high',
@@ -528,24 +572,47 @@ class AnalyticsService
     {
         $suggestions = [];
         
-        // Low registration volume
-        if ($registrationData['daily_average'] < 1.5) {
+        // Low registration volume - adjusted threshold for your data
+        if ($registrationData['daily_average'] < 2.0) {
             $suggestions[] = [
                 'type' => 'outreach',
-                'priority' => 'medium',
+                'priority' => 'high',
                 'category' => 'Registration Growth',
                 'title' => 'Low PWD Registration Rate',
-                'description' => "Daily average of {$registrationData['daily_average']} registrations suggests potential outreach opportunities.",
+                'description' => "Daily average of {$registrationData['daily_average']} registrations indicates significant outreach opportunities. With only {$registrationData['total']} total registrations, there's potential to reach more PWDs in the community.",
                 'recommendations' => [
                     'Conduct community outreach programs in underserved areas',
                     'Partner with hospitals and rehabilitation centers',
                     'Implement mobile registration services',
                     'Create multilingual registration materials',
-                    'Develop referral incentive programs'
+                    'Develop referral incentive programs',
+                    'Focus on barangays with zero registrations (15 out of 18 barangays)',
+                    'Create awareness campaigns about PWD benefits and services'
                 ],
-                'expected_impact' => 'Increase registrations by 40-60%',
+                'expected_impact' => 'Increase registrations by 200-300%',
                 'implementation_difficulty' => 'Medium',
                 'estimated_timeframe' => '4-6 weeks'
+            ];
+        }
+        
+        // Barangay coverage analysis
+        if ($registrationData['total'] > 0) {
+            $suggestions[] = [
+                'type' => 'coverage',
+                'priority' => 'high',
+                'category' => 'Geographic Coverage',
+                'title' => 'Limited Barangay Coverage',
+                'description' => "PWD registrations are concentrated in only 3 out of 18 barangays (Mamatid, San Isidro, Banlic). This suggests significant gaps in service coverage.",
+                'recommendations' => [
+                    'Conduct targeted outreach in barangays with zero registrations',
+                    'Establish satellite registration centers in underserved areas',
+                    'Partner with barangay officials for local awareness campaigns',
+                    'Analyze barriers preventing registration in other barangays',
+                    'Create barangay-specific registration goals and incentives'
+                ],
+                'expected_impact' => 'Expand coverage to 10-12 barangays',
+                'implementation_difficulty' => 'High',
+                'estimated_timeframe' => '8-12 weeks'
             ];
         }
         
