@@ -28,7 +28,11 @@ import {
   DialogActions,
   CircularProgress,
   Alert,
-  Snackbar
+  Snackbar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon
 } from '@mui/material';
 import {
   Assessment,
@@ -51,10 +55,13 @@ import {
   Warning,
   Lightbulb,
   Close,
-  Menu as MenuIcon
+  Menu as MenuIcon,
+  AutoFixHigh,
+  Psychology
 } from '@mui/icons-material';
 import AdminSidebar from '../shared/AdminSidebar';
 import SuggestionsSection from './SuggestionsSection';
+import analyticsService from '../../services/analyticsService';
 import { reportsService } from '../../services/reportsService';
 import pwdMemberService from '../../services/pwdMemberService';
 import { applicationService } from '../../services/applicationService';
@@ -95,6 +102,9 @@ const Reports = () => {
   const [pdfBlob, setPdfBlob] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState('all');
+  const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
+  const [contextualSuggestions, setContextualSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   
   // PWD Registration Report Data
   const [pwdRegistrationData, setPwdRegistrationData] = useState({
@@ -1060,6 +1070,56 @@ const Reports = () => {
 
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const handleOpenSuggestionsDialog = async () => {
+    if (!selectedReportData) return;
+    
+    setLoadingSuggestions(true);
+    setSuggestionsDialogOpen(true);
+    
+    try {
+      const params = {};
+      if (selectedDateRange !== 'all') {
+        const dateRange = getDateRange(selectedDateRange);
+        params.start_date = dateRange.start.toISOString().split('T')[0];
+        params.end_date = dateRange.end.toISOString().split('T')[0];
+      }
+      
+      // Get suggestions specific to the report type
+      const response = await analyticsService.getCategorySuggestions(
+        getReportCategory(selectedReportData.reportType), 
+        params
+      );
+      
+      if (response.success) {
+        setContextualSuggestions(response.data.suggestions || []);
+      } else {
+        setContextualSuggestions([]);
+      }
+    } catch (error) {
+      console.error('Error loading contextual suggestions:', error);
+      setContextualSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const handleCloseSuggestionsDialog = () => {
+    setSuggestionsDialogOpen(false);
+    setContextualSuggestions([]);
+  };
+
+  const getReportCategory = (reportType) => {
+    const categoryMap = {
+      'registration': 'registrations',
+      'cards': 'applications',
+      'benefits': 'benefits',
+      'complaints': 'complaints',
+      'performance': 'system',
+      'annual': 'system'
+    };
+    return categoryMap[reportType] || 'system';
   };
 
   const reports = [
@@ -3865,6 +3925,23 @@ const Reports = () => {
           </DialogContent>
           <DialogActions sx={{ ...dialogActionsStyles, bgcolor: 'white', p: 5, m: 1 }}>
             <Button onClick={handleCloseDialog}>Close</Button>
+            {selectedReportData && selectedReportData.reportType !== 'suggestions' && (
+              <Button 
+                variant="outlined" 
+                startIcon={<Psychology />}
+                onClick={handleOpenSuggestionsDialog}
+                sx={{ 
+                  borderColor: '#9B59B6', 
+                  color: '#9B59B6',
+                  '&:hover': { 
+                    borderColor: '#8E44AD', 
+                    bgcolor: '#F8F4FF' 
+                  }
+                }}
+              >
+                Get Suggestions
+              </Button>
+            )}
             <Button variant="contained" startIcon={<Download />}>
               Download Report
             </Button>
@@ -3980,6 +4057,195 @@ const Reports = () => {
               startIcon={<Download />}
             >
               Download PDF
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Contextual Suggestions Dialog */}
+        <Dialog
+          open={suggestionsDialogOpen}
+          onClose={handleCloseSuggestionsDialog}
+          maxWidth="lg"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              minHeight: '70vh'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderBottom: '1px solid #E8E8E8',
+            pb: 2
+          }}>
+            <Box display="flex" alignItems="center" gap={2}>
+              <Psychology color="primary" />
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2C3E50' }}>
+                AI Suggestions for {selectedReportData?.title}
+              </Typography>
+            </Box>
+            <IconButton onClick={handleCloseSuggestionsDialog} size="small">
+              <Close />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 3 }}>
+            {loadingSuggestions ? (
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '50vh',
+                flexDirection: 'column',
+                gap: 2
+              }}>
+                <CircularProgress size={60} />
+                <Typography variant="h6" sx={{ color: '#7F8C8D' }}>
+                  Analyzing data and generating suggestions...
+                </Typography>
+              </Box>
+            ) : contextualSuggestions.length === 0 ? (
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 8,
+                bgcolor: '#F8FAFC',
+                borderRadius: 2,
+                border: '1px solid #E8E8E8'
+              }}>
+                <CheckCircle sx={{ fontSize: 60, color: '#27AE60', mb: 2 }} />
+                <Typography variant="h6" sx={{ color: '#2C3E50', mb: 1 }}>
+                  Excellent Performance!
+                </Typography>
+                <Typography sx={{ color: '#7F8C8D' }}>
+                  No critical issues detected for this report. Your system is performing well in this area.
+                </Typography>
+              </Box>
+            ) : (
+              <Box>
+                <Typography variant="body1" sx={{ mb: 3, color: '#7F8C8D' }}>
+                  Based on the analysis of your {selectedReportData?.title.toLowerCase()}, here are AI-powered recommendations to optimize performance:
+                </Typography>
+                
+                {contextualSuggestions.map((suggestion, index) => (
+                  <Card key={index} sx={{ mb: 2, border: '1px solid #E8E8E8' }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                        {suggestion.priority === 'high' ? (
+                          <Warning color="error" />
+                        ) : suggestion.priority === 'medium' ? (
+                          <Assessment color="warning" />
+                        ) : (
+                          <Info color="info" />
+                        )}
+                        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                          {suggestion.title}
+                        </Typography>
+                        <Chip
+                          label={suggestion.priority.toUpperCase()}
+                          size="small"
+                          color={
+                            suggestion.priority === 'high' ? 'error' :
+                            suggestion.priority === 'medium' ? 'warning' : 'info'
+                          }
+                        />
+                      </Box>
+                      
+                      <Typography variant="body1" paragraph sx={{ color: '#2C3E50' }}>
+                        {suggestion.description}
+                      </Typography>
+                      
+                      <Typography variant="subtitle2" gutterBottom sx={{ color: '#2C3E50', fontWeight: 600 }}>
+                        Recommendations:
+                      </Typography>
+                      <List dense>
+                        {suggestion.recommendations?.map((rec, recIndex) => (
+                          <ListItem key={recIndex} sx={{ py: 0.5 }}>
+                            <ListItemIcon sx={{ minWidth: 30 }}>
+                              <AutoFixHigh fontSize="small" color="primary" />
+                            </ListItemIcon>
+                            <ListItemText 
+                              primary={rec} 
+                              primaryTypographyProps={{ fontSize: '0.9rem' }}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                      
+                      <Box display="flex" gap={3} mt={2}>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#7F8C8D', fontWeight: 600 }}>
+                            Expected Impact:
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: '#2C3E50' }}>
+                            {suggestion.expected_impact}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#7F8C8D', fontWeight: 600 }}>
+                            Timeframe:
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: '#2C3E50' }}>
+                            {suggestion.estimated_timeframe}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#7F8C8D', fontWeight: 600 }}>
+                            Difficulty:
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: '#2C3E50' }}>
+                            {suggestion.implementation_difficulty}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
+          </DialogContent>
+          
+          <DialogActions sx={{ 
+            borderTop: '1px solid #E8E8E8', 
+            pt: 2, 
+            px: 3,
+            justifyContent: 'space-between'
+          }}>
+            <Button 
+              onClick={handleCloseSuggestionsDialog}
+              variant="outlined"
+              sx={{ 
+                borderColor: '#7F8C8D', 
+                color: '#7F8C8D',
+                '&:hover': { 
+                  borderColor: '#5A5A5A', 
+                  bgcolor: '#F8F8F8' 
+                }
+              }}
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                handleCloseSuggestionsDialog();
+                // Open the full suggestions report
+                const suggestionsReport = reports.find(r => r.reportType === 'suggestions');
+                if (suggestionsReport) {
+                  setSelectedReportData(suggestionsReport);
+                  setOpenDialog(true);
+                }
+              }}
+              variant="contained"
+              sx={{ 
+                bgcolor: '#9B59B6',
+                '&:hover': { bgcolor: '#8E44AD' },
+                px: 3
+              }}
+              startIcon={<Lightbulb />}
+            >
+              View All Suggestions
             </Button>
           </DialogActions>
         </Dialog>
